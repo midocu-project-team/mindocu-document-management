@@ -1,5 +1,6 @@
-from datatypes import File, Segment
 
 # Omid
-def segment_document(file: File) -> list[Segment]:
+from backend.datatypes import CaseFileDocument, SegmentationResult
+
+def segment_document(file: CaseFileDocument ) -> SegmentationResult:
   pass
