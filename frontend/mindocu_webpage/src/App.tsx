@@ -1,12 +1,10 @@
 import './App.css'
+import { Sidebar } from './components/sidebar'
 
 function App() {
-
   return (
     <div id="layout">
-      <section id="sidebar">
-        <h1>Sidebar</h1>
-      </section>
+      <Sidebar />
       <section id="content">
         <h1>Center</h1>
       </section>

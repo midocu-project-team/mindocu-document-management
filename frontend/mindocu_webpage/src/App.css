@@ -100,6 +100,7 @@
   display: flex;
   flex-direction: column;
   padding: 32px;
+  background: var(--sbbg);
   gap: 32px;
 
   @media (max-width: 1024px) {
