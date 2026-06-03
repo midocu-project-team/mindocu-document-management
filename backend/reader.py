@@ -1,9 +1,17 @@
+from collections import defaultdict
+from datetime import datetime
 import io
+import math
+import os
 
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import InputFormat
+from docling.datamodel.base_models import ConfidenceReport, InputFormat, Page
 from docling.datamodel.document import ConversionResult
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import (
+    TableFormerMode,
+    ThreadedPdfPipelineOptions,
+)
+from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc.document import (
     DocItem,
@@ -15,22 +23,69 @@ from docling_core.types.doc.document import (
     TableItem,
     TextItem,
 )
+from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfPipeline
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
-from datatypes import (
+from backend.datatypes import (
     BlockType,
     CaseFileDocument,
     ContentBlock,
+    PageContent,
 )
+
+
+# ============================================================================
+# OCR / PDF conversion
+# ============================================================================
+
+# docling's default OCR engine for the PDF pipeline (see conversion logs)
+OCR_ENGINE = "docling:rapidocr"
 
 
 # Apple Silicon (MPS) does not support float64, which is required by the RT-DETR-Layout model.
 # Therefore, models should be run on the CPU; otherwise, the layout stage will crash.
+# This is needed because the backend will likely run on a Silicon Mac Mini
 def _get_pdf_format_options() -> PdfFormatOption:
-    accelerator_options = AcceleratorOptions(device=AcceleratorDevice.CPU)
+    num_cores = os.cpu_count() or 1
 
-    pipeline_options = PdfPipelineOptions(accelerator_options=accelerator_options)
-    return PdfFormatOption(pipeline_options=pipeline_options)
+    accelerator_options = AcceleratorOptions(
+        device=AcceleratorDevice.CPU, num_threads=num_cores
+    )
+    pipeline_options = ThreadedPdfPipelineOptions(
+        do_ocr=True,
+        do_table_structure=True,
+        generate_page_images=False,
+        generate_picture_images=False,
+        images_scale=1.0,
+        accelerator_options=accelerator_options,
+        ocr_batch_size=4,
+        layout_batch_size=4,
+        table_batch_size=4,
+        document_timeout=60 * 30,  # reading may not take longer than 30 minutes
+    )
+
+    pipeline_options.table_structure_options.mode = TableFormerMode.FAST
+
+    return PdfFormatOption(
+        pipeline_options=pipeline_options,
+        pipeline_cls=ThreadedStandardPdfPipeline,
+        backend=PyPdfiumDocumentBackend,
+    )
+
+
+def _page_confidence(report: ConfidenceReport, page_no: int) -> float | None:
+    """Mean confidence score of the page; NaN (no score) -> None."""
+    score = report.pages[page_no].mean_score
+    return None if math.isnan(score) else float(score)
+
+
+def _was_ocr_applied(report: ConfidenceReport, page_no: int) -> bool:
+    """OCR contributed on the page iff its ocr_score is set (not NaN).
+
+    Note: page cells (TextCell.from_ocr) are cleared during assembling, so the
+    confidence report is the only per-page OCR signal left after conversion.
+    """
+    return not math.isnan(report.pages[page_no].ocr_score)
 
 
 def ocr_convert_pdf(
@@ -46,10 +101,54 @@ def ocr_convert_pdf(
     return result
 
 
-# A few possible approaches, but it's up to you: (maybe don't use BytesIO, but a filename as string instead, etc.)
-def read_document(file: io.BytesIO, file_name: str | None = None) -> CaseFileDocument:
-    pass
+# ============================================================================
+# Document assembly (main function)
+# ============================================================================
 
+
+def read_document(file: io.BytesIO, file_name: str | None = None) -> CaseFileDocument:
+    # Capture size before conversion: docling closes the stream after reading it.
+    file_size_bytes = file.getbuffer().nbytes
+
+    conversion_result = ocr_convert_pdf(file, file_name)
+    document = conversion_result.document
+    report = conversion_result.confidence
+
+    # 1) Collect blocks per page (the only thing that genuinely needs accumulation)
+    blocks_by_page: dict[int, list[ContentBlock]] = defaultdict(list)
+    for item, _ in document.iterate_items():
+        for page_no, block in item_to_blocks(item, doc=document):
+            blocks_by_page[page_no].append(block)
+
+    # 2) Build one PageContent per page, pulling metadata from the docling pages
+    #    and per-page confidence / OCR signal from the confidence report.
+    pages = [
+        PageContent(
+            page_number=page.page_no,
+            raw_text=document.export_to_markdown(page_no=page.page_no),
+            blocks=blocks_by_page[page.page_no],
+            was_ocr_applied=_was_ocr_applied(report, page.page_no),
+            confidence=_page_confidence(report, page.page_no),
+            width_pt=page.size.width if page.size else 0.0,
+            height_pt=page.size.height if page.size else 0.0,
+        )
+        for page in conversion_result.pages
+    ]
+
+    return CaseFileDocument(
+        file_name=file_name or "",
+        file_size_bytes=file_size_bytes,
+        total_pages=len(document.pages),
+        pages=pages,
+        errors=[],
+        extracted_at=datetime.now(),
+        ocr_engine=OCR_ENGINE,
+    )
+
+
+# ============================================================================
+# DocItem -> ContentBlock mapping
+# ============================================================================
 
 # docling label -> general BlockType. Labels not listed (PAGE_HEADER,
 # PICTURE, FORM, KEY_VALUE_REGION, CHECKBOX_*, Field*, ...) -> UNKNOWN.

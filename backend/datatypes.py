@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import enum
+import uuid
 from datetime import datetime
 
 type BoundingBox = tuple[float, float, float, float]
@@ -53,8 +54,11 @@ class PageExtractionError:
 
 @dataclass
 class CaseFileDocument:
-    document_id: str  # UUID, generated when loading
-    source_path: str
+    # kw_only ensures that the default value for document_id is allowed even when required fields follow.
+    document_id: str = field(
+        default_factory=lambda: str(uuid.uuid4()), kw_only=True
+    )  # UUID, generated when loading
+    file_name: str
     file_size_bytes: int
     total_pages: int
     pages: list[PageContent]  # All successfully loaded pages
