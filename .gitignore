@@ -248,3 +248,6 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Folder for exploring different approaches
+explore/
