@@ -1,5 +1,10 @@
 import io
 
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.document import ConversionResult
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc.document import (
     DocItem,
     DoclingDocument,
@@ -11,6 +16,7 @@ from docling_core.types.doc.document import (
     TextItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.io import DocumentStream
 from datatypes import (
     BlockType,
     CaseFileDocument,
@@ -18,8 +24,30 @@ from datatypes import (
 )
 
 
+# Apple Silicon (MPS) does not support float64, which is required by the RT-DETR-Layout model.
+# Therefore, models should be run on the CPU; otherwise, the layout stage will crash.
+def _get_pdf_format_options() -> PdfFormatOption:
+    accelerator_options = AcceleratorOptions(device=AcceleratorDevice.CPU)
+
+    pipeline_options = PdfPipelineOptions(accelerator_options=accelerator_options)
+    return PdfFormatOption(pipeline_options=pipeline_options)
+
+
+def ocr_convert_pdf(
+    pdf_file: io.BytesIO, file_name: str | None = None
+) -> ConversionResult:
+    stream = DocumentStream(name=file_name, stream=pdf_file)
+
+    converter = DocumentConverter(
+        format_options={InputFormat.PDF: _get_pdf_format_options()}
+    )
+    result = converter.convert(stream)
+
+    return result
+
+
 # A few possible approaches, but it's up to you: (maybe don't use BytesIO, but a filename as string instead, etc.)
-def read_document(file: io.BytesIO) -> CaseFileDocument:
+def read_document(file: io.BytesIO, file_name: str | None = None) -> CaseFileDocument:
     pass
 
 
