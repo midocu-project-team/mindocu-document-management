@@ -1,0 +1,10 @@
+[project]
+name = "mindocu-document-management"
+version = "0.1.0"
+description = "Case-File Document-Scan"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "docling>=2.96.1",
+    "ipython>=9.14.0",
+]
