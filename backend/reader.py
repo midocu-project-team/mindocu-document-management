@@ -18,19 +18,19 @@ from datatypes import (
 )
 
 
-# Ein paar Ansätze, ist aber selbst überlassen: (vlt. auch kein BytesObjekt als Input sondern file name als string direkt, etc.)
+# A few possible approaches, but it's up to you: (maybe don't use BytesIO, but a filename as string instead, etc.)
 def read_document(file: io.BytesIO) -> CaseFileDocument:
     pass
 
 
-# docling-Label -> grober BlockType. Nicht aufgeführte Labels (PAGE_HEADER,
+# docling label -> general BlockType. Labels not listed (PAGE_HEADER,
 # PICTURE, FORM, KEY_VALUE_REGION, CHECKBOX_*, Field*, ...) -> UNKNOWN.
 _LABEL_TO_BLOCKTYPE: dict[DocItemLabel, BlockType] = {
     DocItemLabel.TITLE: BlockType.HEADING,
     DocItemLabel.SECTION_HEADER: BlockType.HEADING,
     DocItemLabel.PAGE_FOOTER: BlockType.FOOTER,
     DocItemLabel.TABLE: BlockType.TABLE,
-    DocItemLabel.DOCUMENT_INDEX: BlockType.TABLE,  # Inhaltsverzeichnis ist tabellarisch
+    DocItemLabel.DOCUMENT_INDEX: BlockType.TABLE,  # Table of contents is treated as table
     DocItemLabel.TEXT: BlockType.PARAGRAPH,
     DocItemLabel.PARAGRAPH: BlockType.PARAGRAPH,
     DocItemLabel.LIST_ITEM: BlockType.PARAGRAPH,
@@ -44,15 +44,14 @@ _LABEL_TO_BLOCKTYPE: dict[DocItemLabel, BlockType] = {
 
 
 def _map_label(label: DocItemLabel) -> BlockType:
+    # Returns the corresponding BlockType for a given DocItemLabel, or UNKNOWN if not found.
     return _LABEL_TO_BLOCKTYPE.get(label, BlockType.UNKNOWN)
 
 
 def item_to_blocks(
     item: DocItem, doc: DoclingDocument
 ) -> list[tuple[int, ContentBlock]]:
-
-    # check for TextItem first
-    # some elements inherit from Text and FloatingItem
+    # Prefer TextItem (some elements inherit from Text and FloatingItem)
     if isinstance(item, TextItem):
         return text_item_to_blocks(item)
     elif isinstance(item, FloatingItem):
@@ -83,9 +82,10 @@ def text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
 
 
 def floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBlock]]:
-    """Converts a non-textual DocItem into (page_no, ContentBlock) per prov.
+    """
+    Converts a non-textual DocItem into (page_no, ContentBlock) per prov.
 
-    No charspan slicing: full text only for the first prov, subsequent provs only provide bbox.
+    No charspan slicing: full text only for the first prov, subsequent provs only provide bbox (empty text).
     """
     text = _floating_text(item, doc)
     block_type = _map_label(item.label)
@@ -96,7 +96,9 @@ def floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBlock
             (
                 prov.page_no,
                 ContentBlock(
-                    text=text if i == 0 else "",  # Folge-Rechtecke: nur Position
+                    text=(
+                        text if i == 0 else ""
+                    ),  # Following rectangles: only position, no text
                     block_type=block_type,
                     bbox=prov.bbox.as_tuple(),
                     source_ref=item.self_ref,
@@ -107,14 +109,15 @@ def floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBlock
 
 
 def fallback_items_to_blocks(item: DocItem) -> list[tuple[int, ContentBlock]]:
-    """Generische Behandlung für nackte/unbekannte DocItems.
-
-    Greift für DocItems, die weder TextItem noch FloatingItem sind
-    (FieldRegionItem, FieldItem) sowie für künftige/unerwartete Typen.
-    Keine bekannte Textquelle und kein charspan: Best-Effort-Text aufs
-    erste prov, Folge-prov nur als bbox.
     """
-    # nackte DocItems haben kein .text -> als Platzhalter das Label nutzen
+    Generic handling for plain/unknown DocItems.
+
+    Applies to DocItems that are neither TextItem nor FloatingItem
+    (FieldRegionItem, FieldItem), as well as for future/unexpected types.
+    No known text source and no charspan: best-effort text on the
+    first prov, following provs only as bbox (no text).
+    """
+    # Plain DocItems often have no .text -> use label as placeholder text
     text = getattr(item, "text", "") or f"[{item.label.value}]"
     block_type = _map_label(item.label)
 
@@ -124,7 +127,9 @@ def fallback_items_to_blocks(item: DocItem) -> list[tuple[int, ContentBlock]]:
             (
                 prov.page_no,
                 ContentBlock(
-                    text=text if i == 0 else "",  # Folge-Rechtecke: nur Position
+                    text=(
+                        text if i == 0 else ""
+                    ),  # Following rectangles: only position, no text
                     block_type=block_type,
                     bbox=prov.bbox.as_tuple(),
                     source_ref=item.self_ref,
@@ -139,7 +144,8 @@ def _floating_text(item: DocItem, doc: DoclingDocument) -> str:
     if isinstance(item, TableItem):
         return item.export_to_markdown(doc)
     if isinstance(item, PictureItem):
-        return item.caption_text(doc) or "[Abbildung]"
+        return item.caption_text(doc) or "[Image]"
     if isinstance(item, (KeyValueItem, FormItem)):
-        return " ".join(c.text for c in item.graph.cells) or "[Formular]"
-    return getattr(item, "text", "")  # Fallback: nackte DocItems / Unbekanntes
+        # Attempt to concatenate all cell texts, or use placeholder if empty
+        return " ".join(c.text for c in item.graph.cells) or "[Form]"
+    return getattr(item, "text", "")  # Fallback: naked DocItems / unknown
