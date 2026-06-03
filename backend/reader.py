@@ -67,7 +67,7 @@ _LABEL_TO_BLOCKTYPE: dict[DocItemLabel, BlockType] = {
     DocItemLabel.FOOTNOTE: BlockType.PARAGRAPH,
     DocItemLabel.FORMULA: BlockType.PARAGRAPH,
     DocItemLabel.REFERENCE: BlockType.PARAGRAPH,
-    DocItemLabel.HANDWRITTEN_TEXT: BlockType.PARAGRAPH,
+    DocItemLabel.HANDWRITTEN_TEXT: BlockType.HANDWRITTEN,
 }
 
 

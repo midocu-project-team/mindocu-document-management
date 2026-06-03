@@ -7,6 +7,7 @@ type BoundingBox = tuple[float, float, float, float]
 
 class BlockType(enum.StrEnum):
     PARAGRAPH = "paragraph"
+    HANDWRITTEN = "handwritten"
     HEADING = "heading"
     TABLE = "table"
     FOOTER = "footer"
