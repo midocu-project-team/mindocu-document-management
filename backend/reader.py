@@ -1,5 +1,5 @@
 import io
-from datatypes import CaseFileDocument, ExtracedPageError, PageContent
+from datatypes import CaseFileDocument, PageExtractionError, PageContent
 
 # Korbi
 
@@ -7,5 +7,5 @@ from datatypes import CaseFileDocument, ExtracedPageError, PageContent
 def read_document(file: io.BytesIO) -> CaseFileDocument:
   pass
 
-def _extract_page(page) -> PageContent | ExtracedPageError :
+def _extract_page(page) -> PageContent | PageExtractionError:
   pass
