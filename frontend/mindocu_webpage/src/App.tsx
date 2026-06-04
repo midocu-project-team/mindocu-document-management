@@ -1,14 +1,17 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css'
-import { Sidebar } from './components/sidebar'
+import MainLayout from './layouts/MainLayout'
+import CaseHomePage from './pages/CaseHomePage'
 
 function App() {
   return (
-    <div id="layout">
-      <Sidebar />
-      <section id="content">
-        <h1>Center</h1>
-      </section>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<CaseHomePage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 
