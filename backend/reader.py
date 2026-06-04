@@ -5,7 +5,7 @@ import math
 import os
 
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import ConfidenceReport, InputFormat, Page
+from docling.datamodel.base_models import ConfidenceReport, InputFormat
 from docling.datamodel.document import ConversionResult
 from docling.datamodel.pipeline_options import (
     TableFormerMode,
@@ -13,18 +13,7 @@ from docling.datamodel.pipeline_options import (
 )
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling_core.types.doc.document import (
-    DocItem,
-    DoclingDocument,
-    FloatingItem,
-    FormItem,
-    KeyValueItem,
-    PictureItem,
-    TableItem,
-    TextItem,
-)
 from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfPipeline
-from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 from backend.datatypes import (
     BlockType,
@@ -150,22 +139,55 @@ def read_document(file: io.BytesIO, file_name: str | None = None) -> CaseFileDoc
 # DocItem -> ContentBlock mapping
 # ============================================================================
 
-# docling label -> general BlockType. Labels not listed (PAGE_HEADER,
-# PICTURE, FORM, KEY_VALUE_REGION, CHECKBOX_*, Field*, ...) -> UNKNOWN.
+from docling_core.types.doc.document import (
+    DocItem,
+    DoclingDocument,
+    FloatingItem,
+    FormItem,
+    KeyValueItem,
+    PictureItem,
+    TableItem,
+    TextItem,
+)
+from docling_core.types.doc.labels import DocItemLabel
+
+# docling label -> general BlockType. Labels not listed (PAGE_HEADER, MARKER,
+# and any future/unknown labels) -> UNKNOWN.
 _LABEL_TO_BLOCKTYPE: dict[DocItemLabel, BlockType] = {
+    # Headings
     DocItemLabel.TITLE: BlockType.HEADING,
     DocItemLabel.SECTION_HEADER: BlockType.HEADING,
-    DocItemLabel.PAGE_FOOTER: BlockType.FOOTER,
+    # Lists
+    DocItemLabel.LIST_ITEM: BlockType.LIST,
+    # Tables
     DocItemLabel.TABLE: BlockType.TABLE,
     DocItemLabel.DOCUMENT_INDEX: BlockType.TABLE,  # Table of contents is treated as table
+    # Paragraph-like text (deliberately folded together)
     DocItemLabel.TEXT: BlockType.PARAGRAPH,
     DocItemLabel.PARAGRAPH: BlockType.PARAGRAPH,
-    DocItemLabel.LIST_ITEM: BlockType.PARAGRAPH,
     DocItemLabel.CODE: BlockType.PARAGRAPH,
     DocItemLabel.CAPTION: BlockType.PARAGRAPH,
     DocItemLabel.FOOTNOTE: BlockType.PARAGRAPH,
     DocItemLabel.FORMULA: BlockType.PARAGRAPH,
     DocItemLabel.REFERENCE: BlockType.PARAGRAPH,
+    # Images: logos, signatures, stamps, figures (strong segmentation signal)
+    DocItemLabel.PICTURE: BlockType.IMAGE,
+    DocItemLabel.CHART: BlockType.IMAGE,
+    # Structured form / key-value regions (one coarse bucket, not per-field)
+    DocItemLabel.FORM: BlockType.FORM,
+    DocItemLabel.KEY_VALUE_REGION: BlockType.FORM,
+    DocItemLabel.FIELD_REGION: BlockType.FORM,
+    DocItemLabel.FIELD_HEADING: BlockType.FORM,
+    DocItemLabel.FIELD_ITEM: BlockType.FORM,
+    DocItemLabel.FIELD_KEY: BlockType.FORM,
+    DocItemLabel.FIELD_VALUE: BlockType.FORM,
+    DocItemLabel.FIELD_HINT: BlockType.FORM,
+    DocItemLabel.EMPTY_VALUE: BlockType.FORM,
+    DocItemLabel.GRADING_SCALE: BlockType.FORM,
+    DocItemLabel.CHECKBOX_SELECTED: BlockType.FORM,
+    DocItemLabel.CHECKBOX_UNSELECTED: BlockType.FORM,
+    # Footer / handwriting
+    DocItemLabel.PAGE_FOOTER: BlockType.FOOTER,  # NOTE: currently dead (FURNITURE layer, not traversed)
     DocItemLabel.HANDWRITTEN_TEXT: BlockType.HANDWRITTEN,
 }
 
