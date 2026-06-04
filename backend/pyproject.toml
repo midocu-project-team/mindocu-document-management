@@ -15,9 +15,8 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-# Repo root on sys.path so `backend.` imports resolve (PEP 420 namespace
-# package, no __init__.py). testpaths keeps collection off the test assets
-# and the explore scratch script.
+# backend/ on sys.path so the top-level modules (datatypes, reader, ...) resolve.
+# testpaths keeps collection off the test assets and the explore scratch scripts.
 pythonpath = ["."]
-testpaths = ["backend/tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
