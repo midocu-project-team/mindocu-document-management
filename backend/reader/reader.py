@@ -6,13 +6,13 @@ from docling.datamodel.base_models import ConfidenceReport, InputFormat
 from docling.datamodel.document import ConversionResult
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.io import DocumentStream
-from backend.datatypes import (
+from datatypes import (
     CaseFileDocument,
     ContentBlock,
     PageContent,
 )
-from backend.reader.mapping import item_to_blocks
-from backend.reader.options import default_pdf_format_options
+from .mapping import item_to_blocks
+from .options import default_pdf_format_options
 
 # ============================================================================
 # Document assembly (main function)

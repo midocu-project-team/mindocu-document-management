@@ -1,4 +1,4 @@
-"""Unit tests for the pure helpers in backend.reader.
+"""Unit tests for the pure helpers in the reader package.
 
 These cover the DocItem -> ContentBlock mapping, label mapping, and the
 per-page confidence/OCR signals. The heavy OCR paths (read_document,
@@ -19,9 +19,9 @@ from docling_core.types.doc.document import (
 )
 from docling_core.types.doc.labels import DocItemLabel
 
-from backend.datatypes import BlockType
-from backend.reader import mapping
-from backend.reader.mapping import (
+from datatypes import BlockType
+from reader import mapping
+from reader.mapping import (
     _fallback_items_to_blocks,
     _floating_items_to_blocks,
     _floating_text,
@@ -29,7 +29,7 @@ from backend.reader.mapping import (
     _text_item_to_blocks,
     item_to_blocks,
 )
-from backend.reader.reader import _page_confidence, _was_ocr_applied
+from reader.reader import _page_confidence, _was_ocr_applied
 
 
 # --------------------------------------------------------------------------

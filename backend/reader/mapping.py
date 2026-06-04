@@ -13,7 +13,7 @@ from docling_core.types.doc.document import (
     TextItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from backend.datatypes import BlockType, ContentBlock
+from datatypes import BlockType, ContentBlock
 
 
 # MAIN MAPPING FUNCTION #

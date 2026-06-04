@@ -12,7 +12,7 @@ student project (Professionelles Projektmanagement, WI semester 6).
 The pipeline has three stages, each with its own dataclass output (see
 [backend/README.md](backend/README.md) for ASCII schema diagrams):
 
-1. **Read** (`reader.py`) — PDF → `CaseFileDocument`: OCR/parse the PDF into
+1. **Read** (`reader/`) — PDF → `CaseFileDocument`: OCR/parse the PDF into
    structured, machine-readable pages and blocks. **Implemented.**
 2. **Segment** (`segmentation.py`) — `CaseFileDocument` → `SegmentationResult`:
    detect document boundaries and group pages into `DocumentSegment`s. **Stub.**
@@ -31,36 +31,47 @@ The pipeline has three stages, each with its own dataclass output (see
 
 ## Environment & commands
 
+- This is a monorepo: `backend/` (Python) and `frontend/` (web app). The Python
+  project lives in **`backend/`** — run all `uv`/`pytest` commands from there.
 - Package/env manager is **uv** (not pip). Python **3.13** (`.python-version`).
-- Dependencies live in `pyproject.toml` + `uv.lock` — always commit both together.
+- Dependencies live in `backend/pyproject.toml` + `backend/uv.lock` — always
+  commit both together.
 
 ```bash
+cd backend
 uv sync                              # create .venv + install locked deps
 uv add <pkg>            / uv add --dev <pkg>      # add deps (never pip install)
-uv run python -m backend.reader      # run a module (run from repo root)
+uv run python -m reader.reader       # run a module (run from backend/)
 uv run pytest                        # tests
 ```
 
-Code is imported as a namespace package: `from backend.datatypes import ...`.
-There are **no `__init__.py` files** (PEP 420 namespace packages), so always
-run from the repo root, otherwise the `backend.` imports won't resolve.
+`backend/` is the import root, so modules are imported without a `backend.`
+prefix: `from datatypes import ...`, `from reader import read_document`.
+`datatypes`/`segmentation`/`labeling` are top-level modules; `reader` is a
+package (`reader/` with an `__init__.py` re-exporting `read_document` /
+`ocr_convert_pdf`). Always run from `backend/`, otherwise the imports won't
+resolve.
 
 ## Code layout (`backend/`)
 
-| File | Role |
+| Path | Role |
 | --- | --- |
 | `datatypes.py` | All dataclasses (the pipeline's data contract). No logic. |
-| `reader.py` | Stage 1: PDF → `CaseFileDocument`. The only substantial code. |
+| `reader/` | Stage 1: PDF → `CaseFileDocument`. The only substantial code. |
+| `reader/options.py` | OCR/pipeline config (`_default_pipeline_options`, `default_pdf_format_options`). |
+| `reader/reader.py` | Document assembly: `read_document`, `ocr_convert_pdf`. |
+| `reader/mapping.py` | DocItem → `ContentBlock` mapping. |
+| `reader/__init__.py` | Re-exports `read_document` / `ocr_convert_pdf`. |
 | `segmentation.py` | Stage 2 stub (`segment_document`). |
 | `labeling.py` | Stage 3 stub (`label_document`). |
-| `tests/explore/explore.py` | Scratch script for trying docling features (kept). |
+| `tests/explore/` | Scratch scripts for trying docling features (kept). |
 
-`reader.py` is organized into three banner-delimited sections that map to the
-natural seams of stage 1 (kept in one file on purpose — see "Architecture
-notes"): **OCR / PDF conversion**, **Document assembly** (`read_document`, the
-entry point), and **DocItem → ContentBlock mapping**.
+Stage 1 is split into the `reader/` package along its natural seams: **options**
+(`options.py`), **document assembly** (`reader.py`, entry point `read_document`),
+and **DocItem → ContentBlock mapping** (`mapping.py`). Mapping helpers are
+module-private; the package `__init__` re-exports the public entry points.
 
-## docling knowledge (hard-won; read before touching `reader.py`)
+## docling knowledge (hard-won; read before touching the `reader/` package)
 
 The reader is built on **docling**. These points are non-obvious and were
 verified empirically against the test PDFs:
@@ -95,19 +106,31 @@ verified empirically against the test PDFs:
   `TextCell.from_ocr` flag is **not** usable post-conversion (cells are cleared
   during assembling). PDFs are often **mixed** — some pages have an embedded text
   layer (no OCR), others are scans (OCR), so this flag is genuinely per-page.
+  **Caveat:** `ocr_score` is only populated by engines that report per-cell
+  confidence (RapidOCR). The **default Tesseract CLI does not**, so `ocr_score`
+  stays `NaN` and `was_ocr_applied` is `False` even on OCR'd pages — the per-page
+  OCR signal is unreliable with the current default.
 - **Page numbering** is 1-based and consistent across `document.pages`,
   `confidence.pages`, and `conversion_result.pages` (no off-by-one).
 - **docling closes the input `BytesIO`** after reading, so capture
   `file.getbuffer().nbytes` *before* calling the converter.
 - Pipeline runs **CPU-only** on purpose: Apple Silicon MPS lacks float64 which
-  the RT-DETR layout model needs (it crashes otherwise). Full OCR is slow —
-  ~7.5 s/page (the 375-page test scan took ~47 min).
+  the RT-DETR layout model needs (it crashes otherwise). `AUTO` resolves to MPS
+  on a Mac and would re-trigger that crash — keep CPU.
+- **OCR engine: Tesseract CLI (`deu`+`eng`) by default** — ~7x faster on scanned
+  PDFs than docling's RapidOCR (the 124-page test Akte: ~1 min vs ~8 min) at
+  comparable quality. Needs the `tesseract` binary + `deu` language data on the
+  host (`brew install tesseract tesseract-lang`). Born-digital pages cost ~0.1 s;
+  only true scans are slow. Swappable via `pdf_format_options` (see below).
 
 ## Architecture notes / decisions
 
-- Stage 1 lives in a single `reader.py` (with section banners) rather than split
-  into modules, because the mapping is conceptually *part of* reading. If it
-  grows, the intended next step is a `reader/` package (not flat sibling files).
+- Stage 1 is the `reader/` package (`options.py` / `reader.py` / `mapping.py`),
+  split along the natural seams of reading rather than one flat file.
+- `read_document` / `ocr_convert_pdf` accept an optional `pdf_format_options`
+  (a docling `PdfFormatOption`); `default_pdf_format_options()` builds the default
+  (threaded pipeline, CPU, Tesseract). Pass a custom one to swap OCR engine,
+  pipeline class or backend without touching the reader.
 - `CaseFileDocument.document_id` auto-generates a UUID via
   `field(default_factory=..., kw_only=True)` — don't pass it manually.
 
@@ -116,5 +139,7 @@ verified empirically against the test PDFs:
 - `labeling.py` imports `Segment` and `LabeledSegment` from `datatypes.py`, but
   those types do **not exist** there yet — stage 3's data contract is unfinished.
 - `segmentation.py` / `labeling.py` are bodyless stubs.
-- `was_ocr_applied=True` was previously hardcoded; it is now derived, but page
-  error handling (`CaseFileDocument.errors`) is still always `[]`.
+- `was_ocr_applied` is derived from the confidence report's `ocr_score`, but the
+  default Tesseract CLI leaves that `NaN`, so the flag is currently unreliable
+  (always `False`); a RapidOCR engine would restore it. Page error handling
+  (`CaseFileDocument.errors`) is still always `[]`.
