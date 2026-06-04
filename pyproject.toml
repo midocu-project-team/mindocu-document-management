@@ -8,3 +8,16 @@ dependencies = [
     "docling>=2.96.1",
     "ipython>=9.14.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
+[tool.pytest.ini_options]
+# Repo root on sys.path so `backend.` imports resolve (PEP 420 namespace
+# package, no __init__.py). testpaths keeps collection off the test assets
+# and the explore scratch script.
+pythonpath = ["."]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
