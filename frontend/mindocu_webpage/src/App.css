@@ -95,6 +95,7 @@
   left: 0;
   width: 240px;
   height: 100vh;
+  box-sizing: border-box;
   border-right: 1px solid var(--border);
   background: var(--bg);
   display: flex;
