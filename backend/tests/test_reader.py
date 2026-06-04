@@ -19,18 +19,17 @@ from docling_core.types.doc.document import (
 )
 from docling_core.types.doc.labels import DocItemLabel
 
-from backend import reader
 from backend.datatypes import BlockType
-from backend.reader import (
+from backend.reader import mapping
+from backend.reader.mapping import (
+    _fallback_items_to_blocks,
+    _floating_items_to_blocks,
     _floating_text,
     _map_label,
-    _page_confidence,
-    _was_ocr_applied,
-    fallback_items_to_blocks,
-    floating_items_to_blocks,
+    _text_item_to_blocks,
     item_to_blocks,
-    text_item_to_blocks,
 )
+from backend.reader.reader import _page_confidence, _was_ocr_applied
 
 
 # --------------------------------------------------------------------------
@@ -139,7 +138,7 @@ def test_text_item_single_prov_slices_charspan():
         prov=[make_prov(page_no=1, charspan=(0, 5), bbox=(1.0, 2.0, 3.0, 4.0))],
     )
 
-    blocks = text_item_to_blocks(item)
+    blocks = _text_item_to_blocks(item)
 
     assert len(blocks) == 1
     page_no, block = blocks[0]
@@ -163,7 +162,7 @@ def test_text_item_one_block_per_prov_with_shared_source_ref():
         ],
     )
 
-    blocks = text_item_to_blocks(item)
+    blocks = _text_item_to_blocks(item)
 
     assert [p for p, _ in blocks] == [1, 2]
     assert [b.text for _, b in blocks] == ["Hello", "World"]
@@ -188,7 +187,7 @@ def test_floating_item_text_only_on_first_prov():
         ],
     )
 
-    blocks = floating_items_to_blocks(item, doc=None)
+    blocks = _floating_items_to_blocks(item, doc=None)
 
     assert len(blocks) == 2
     assert blocks[0][1].text == "cell-a | cell-b"
@@ -210,7 +209,7 @@ def test_fallback_uses_text_when_present():
         prov=[make_prov(page_no=1, charspan=(0, 0))],
     )
 
-    blocks = fallback_items_to_blocks(item)
+    blocks = _fallback_items_to_blocks(item)
 
     assert blocks[0][1].text == "field value"
 
@@ -224,7 +223,7 @@ def test_fallback_uses_label_placeholder_when_no_text():
         prov=[make_prov(page_no=1, charspan=(0, 0))],
     )
 
-    blocks = fallback_items_to_blocks(item)
+    blocks = _fallback_items_to_blocks(item)
 
     assert blocks[0][1].text == "[marker]"
     assert blocks[0][1].block_type == BlockType.UNKNOWN
@@ -278,26 +277,26 @@ def test_floating_text_form_without_cells_falls_back():
 
 
 def test_item_to_blocks_routes_text_item(monkeypatch):
-    monkeypatch.setattr(reader, "text_item_to_blocks", lambda item: "TEXT")
-    monkeypatch.setattr(reader, "floating_items_to_blocks", lambda item, doc: "FLOAT")
-    monkeypatch.setattr(reader, "fallback_items_to_blocks", lambda item: "FALLBACK")
+    monkeypatch.setattr(mapping, "_text_item_to_blocks", lambda item: "TEXT")
+    monkeypatch.setattr(mapping, "_floating_items_to_blocks", lambda item, doc: "FLOAT")
+    monkeypatch.setattr(mapping, "_fallback_items_to_blocks", lambda item: "FALLBACK")
 
     assert item_to_blocks(MagicMock(spec=TextItem), doc=None) == "TEXT"
 
 
 def test_item_to_blocks_routes_floating_item(monkeypatch):
-    monkeypatch.setattr(reader, "text_item_to_blocks", lambda item: "TEXT")
-    monkeypatch.setattr(reader, "floating_items_to_blocks", lambda item, doc: "FLOAT")
-    monkeypatch.setattr(reader, "fallback_items_to_blocks", lambda item: "FALLBACK")
+    monkeypatch.setattr(mapping, "_text_item_to_blocks", lambda item: "TEXT")
+    monkeypatch.setattr(mapping, "_floating_items_to_blocks", lambda item, doc: "FLOAT")
+    monkeypatch.setattr(mapping, "_fallback_items_to_blocks", lambda item: "FALLBACK")
 
     # TableItem is a FloatingItem but not a TextItem.
     assert item_to_blocks(MagicMock(spec=TableItem), doc=None) == "FLOAT"
 
 
 def test_item_to_blocks_routes_plain_item_to_fallback(monkeypatch):
-    monkeypatch.setattr(reader, "text_item_to_blocks", lambda item: "TEXT")
-    monkeypatch.setattr(reader, "floating_items_to_blocks", lambda item, doc: "FLOAT")
-    monkeypatch.setattr(reader, "fallback_items_to_blocks", lambda item: "FALLBACK")
+    monkeypatch.setattr(mapping, "_text_item_to_blocks", lambda item: "TEXT")
+    monkeypatch.setattr(mapping, "_floating_items_to_blocks", lambda item, doc: "FLOAT")
+    monkeypatch.setattr(mapping, "_fallback_items_to_blocks", lambda item: "FALLBACK")
 
     # A bare object is neither TextItem nor FloatingItem.
     assert item_to_blocks(object(), doc=None) == "FALLBACK"
