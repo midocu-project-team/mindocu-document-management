@@ -8,9 +8,12 @@ type BoundingBox = tuple[float, float, float, float]
 
 class BlockType(enum.StrEnum):
     PARAGRAPH = "paragraph"
-    HANDWRITTEN = "handwritten"
     HEADING = "heading"
+    LIST = "list"
     TABLE = "table"
+    IMAGE = "image"  # logos, signatures, stamps, figures (PICTURE/CHART)
+    FORM = "form"  # form / key-value regions, fields, checkboxes
+    HANDWRITTEN = "handwritten"
     FOOTER = "footer"
     UNKNOWN = "unknown"
 
