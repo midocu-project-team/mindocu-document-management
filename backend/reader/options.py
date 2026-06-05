@@ -13,7 +13,7 @@ from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfP
 
 # Apple Silicon (MPS) does not support float64, which is required by the RT-DETR-Layout model.
 # Therefore, models should be run on the CPU; otherwise, the layout stage will crash.
-# This is needed because the backend will likely run on a Silicon Mac Mini
+# This is needed because the backend will likely run on a Silicon Mac Studio
 def _default_pipeline_options() -> ThreadedPdfPipelineOptions:
     num_cores = os.cpu_count() or 1
 

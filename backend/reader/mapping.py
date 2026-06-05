@@ -84,6 +84,9 @@ def _map_label(label: DocItemLabel) -> BlockType:
 def _text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
     """Splits a TextItem into (page_no, ContentBlock) for each ProvenanceItem."""
 
+    text = item.text
+    block_type = _map_label(item.label)
+
     blocks = []
     for prov in item.prov:
         start, end = prov.charspan
@@ -91,8 +94,8 @@ def _text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
             (
                 prov.page_no,
                 ContentBlock(
-                    text=item.text[start:end],
-                    block_type=_map_label(item.label),
+                    text=text[start:end],
+                    block_type=block_type,
                     bbox=prov.bbox.as_tuple(),
                     source_ref=item.self_ref,  # links fragments of the same item
                 ),
@@ -160,7 +163,7 @@ def _fallback_items_to_blocks(item: DocItem) -> list[tuple[int, ContentBlock]]:
     return blocks
 
 
-def _floating_text(item: DocItem, doc: DoclingDocument) -> str:
+def _floating_text(item: FloatingItem, doc: DoclingDocument) -> str:
     """Text representation for non-textual DocItems."""
     if isinstance(item, TableItem):
         return item.export_to_markdown(doc)
