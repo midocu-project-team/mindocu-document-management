@@ -1,4 +1,3 @@
-
 from backend.datatypes import LabeledSegment, Segment
 
 # Mahad
