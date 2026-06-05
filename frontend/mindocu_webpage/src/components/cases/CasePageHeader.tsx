@@ -7,7 +7,7 @@ interface CasePageHeaderProps {
 
 export default function CasePageHeader({ title }: CasePageHeaderProps) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, borderBottom: '1px solid', borderColor: 'divider', pb: 2 }}>
       <Typography variant="h4" sx={{ fontWeight: 700 }}>
         {title}
       </Typography>
