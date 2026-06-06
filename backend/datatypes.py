@@ -94,4 +94,10 @@ class SegmentationResult(BaseModel):
     errors: list[PageExtractionError]  # Pages with extraction errors
 
 
+class SimilarityResult(BaseModel):
+    confidence: float
+    are_similar: bool
+    reasoning: str
+
+
 ####################################
