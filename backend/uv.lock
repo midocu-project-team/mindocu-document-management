@@ -871,6 +871,7 @@ dependencies = [
     { name = "docling" },
     { name = "ipython" },
     { name = "ollama" },
+    { name = "rich" },
 ]
 
 [package.dev-dependencies]
@@ -883,6 +884,7 @@ requires-dist = [
     { name = "docling", specifier = ">=2.96.1" },
     { name = "ipython", specifier = ">=9.14.0" },
     { name = "ollama", specifier = ">=0.6.2" },
+    { name = "rich", specifier = ">=15.0.0" },
 ]
 
 [package.metadata.requires-dev]
