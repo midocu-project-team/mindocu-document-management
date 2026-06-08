@@ -95,9 +95,9 @@ class SegmentationResult(BaseModel):
 
 
 class SimilarityResult(BaseModel):
-    confidence: float
+    confidence: float = Field(ge=0, le=1)
     are_similar: bool
-    reasoning: str
+    # reasoning: str # take out to test model performance
 
 
 ####################################
