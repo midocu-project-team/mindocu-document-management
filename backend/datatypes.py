@@ -1,65 +1,103 @@
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import dataclass, field
+import enum
+import uuid
 from datetime import datetime
 
+type BoundingBox = tuple[float, float, float, float]
+
+
+class BlockType(enum.StrEnum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    LIST = "list"
+    TABLE = "table"
+    IMAGE = "image"  # logos, signatures, stamps, figures (PICTURE/CHART)
+    FORM = "form"  # form / key-value regions, fields, checkboxes
+    HANDWRITTEN = "handwritten"
+    FOOTER = "footer"
+    UNKNOWN = "unknown"
+
+
+class PageExtractionErrorType(enum.StrEnum):
+    OCR_FAILED = "ocr_failed"
+    TIMEOUT = "timeout"
+    UNKNOWN = "unknown"
+
+
 ###################################
-# Task 1: Output als CaseFileDocument 
+# Task 1: Output as CaseFileDocument
 ###################################
 @dataclass
-class TextBlock:
+class ContentBlock:
     text: str
-    block_type: Literal["paragraph", "heading", "table", "footer", "unknown"]
-    bbox: tuple[float, float, float, float] | None  # x0, y0, x1, y1
+    block_type: BlockType
+    bbox: BoundingBox | None  # x0, y0, x1, y1
+    source_ref: str | None = (
+        None  # Common reference ID for grouping related ContentBlocks (e.g., fragments of the same item)
+    )
+
 
 @dataclass
 class PageContent:
-    page_number: int           # 1-indexed
-    raw_text: str              # Volltext der Seite (joined)
-    blocks: list[TextBlock]    # strukturierte Blöcke (für spätere Segmentierung nützlich)
+    page_number: int  # 1-indexed
+    raw_text: str  # Full text of the page (joined)
+    blocks: list[ContentBlock]  # Structured blocks (useful for later segmentation)
     was_ocr_applied: bool
     confidence: float | None
-    width_pt: float            # Seitengröße in Points
-    height_pt: float
+    width_pt: float  # Page width in points
+    height_pt: float  # Page height in points
+
 
 @dataclass
-class ExtracedPageError:
+class PageExtractionError:
     page_number: int
-    error_type: Literal["ocr_failed", "corrupted", "encrypted", "timeout"]
+    error_type: PageExtractionErrorType
     message: str
+
 
 @dataclass
 class CaseFileDocument:
-    document_id: str           # UUID, generiert beim Einlesen
-    source_path: str
+    # kw_only ensures that the default value for document_id is allowed even when required fields follow.
+    document_id: str = field(
+        default_factory=lambda: str(uuid.uuid4()), kw_only=True
+    )  # UUID, generated when loading
+    file_name: str
     file_size_bytes: int
     total_pages: int
-    pages: list[PageContent] # Alle erfolgreich eingelesenen Seiten
-    errors: list[ExtracedPageError] # Speichere alle nicht erfolgreich gelesenen Dateien
+    pages: list[PageContent]  # All successfully loaded pages
+    errors: list[
+        PageExtractionError
+    ]  # Store all pages that could not be read successfully
     extracted_at: datetime
-    ocr_engine: str         
-
-###################################
-
+    ocr_engine: str
 
 
 ###################################
-# Task 2: Output als SegmentationResult 
+
+
+###################################
+# Task 2: Output as SegmentationResult
 ###################################
 @dataclass
 class DocumentSegment:
-    segment_id: str           # UUID
-    start_page: int           # 1-indexed, inklusiv
-    end_page: int             # 1-indexed, inklusiv
-    raw_text: str             # joined text aller Seiten des Segments
-    pages: list[PageContent]  # direkt aus Task 1
-    confidence: float | None  # wie sicher ist das Modell bei dieser Grenze
+    segment_id: str  # UUID
+    start_page: int  # 1-indexed, inclusive
+    end_page: int  # 1-indexed, inclusive
+    raw_text: str  # Joined text of all pages in the segment
+    pages: list[PageContent]  # Taken directly from Task 1
+    confidence: float | None  # How certain the model is for the boundary
+
 
 @dataclass
 class SegmentationResult:
-    document_id: str                    # dieselbe ID wie im CaseFileDocument
+    document_id: str  # Same ID as in CaseFileDocument
     segments: list[DocumentSegment]
     segmented_at: datetime
-    segmentation_method: str            # z.B. "llm", "rule-based", "hybrid"
-    unassigned_pages: list[PageContent] # Seiten die keinem Segment zugeordnet werden konnten
-    errors: list[ExtracedPageError]     # Fehlerhafte Seiten
+    segmentation_method: str  # e.g., "llm", "rule-based", "hybrid"
+    unassigned_pages: list[
+        PageContent
+    ]  # Pages that could not be assigned to any segment
+    errors: list[PageExtractionError]  # Pages with extraction errors
+
+
 ####################################
