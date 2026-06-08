@@ -1,0 +1,22 @@
+[project]
+name = "mindocu-document-management"
+version = "0.1.0"
+description = "Case-File Document-Scan"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "docling>=2.96.1",
+    "ipython>=9.14.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
+[tool.pytest.ini_options]
+# backend/ on sys.path so the top-level modules (datatypes, reader, ...) resolve.
+# testpaths keeps collection off the test assets and the explore scratch scripts.
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
