@@ -4,6 +4,8 @@ import CasePageHeader from '../components/cases/CasePageHeader';
 import CaseSection from '../components/cases/CaseSection';
 import CaseCard from '../components/cases/CaseCard';
 import AddCaseDialog from '../components/cases/AddCaseDialog';
+import { useNavigate } from 'react-router-dom';
+
 
 interface CaseItem {
   id: string;
@@ -13,6 +15,7 @@ interface CaseItem {
 }
 
 export default function CaseHomePage() {
+  const navigator = useNavigate();
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<CaseItem | null>(null);
@@ -39,7 +42,7 @@ export default function CaseHomePage() {
 
   return (
     <Box sx={{ p: 4 }}>
-      <CasePageHeader title="Aktenanalyse" />
+      <CasePageHeader title="Aktenanalyse" /> 
 
       <CaseSection
         title="Neue Fälle"
@@ -55,7 +58,7 @@ export default function CaseHomePage() {
                 name={c.name}
                 fileCount={c.fileCount}
                 createdAt={c.createdAt}
-                onClick={() => console.log('Fall geöffnet:', c.name)}
+                onClick={() => navigator('/pdf-review')}
                 onRename={() => setRenameTarget(c)}
                 onDelete={() => handleDelete(c.id)}
               />
