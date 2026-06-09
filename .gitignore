@@ -221,6 +221,9 @@ __marimo__/
 # PDF files
 *.pdf
 
+# cached PDF files as JSON
+*.cached.json
+
 # Frontend
 # Dependencies
 node_modules/
