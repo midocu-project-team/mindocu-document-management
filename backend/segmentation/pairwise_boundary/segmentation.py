@@ -1,6 +1,5 @@
 import json
 import time
-from statistics import mean
 from typing import NamedTuple
 
 import ollama
@@ -17,6 +16,7 @@ from datatypes import (
 from logging_config import get_logger
 from segmentation.pairwise_boundary.prompt import SIMILARITY_SYSTEM_PROMPT
 from segmentation.strategy import SegmentationStrategy
+from segmentation.utils import make_segment
 
 logger = get_logger(__name__)
 logger.setLevel(level="DEBUG")
@@ -65,7 +65,7 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
         if len(pages) == 0:
             segments: list[DocumentSegment] = []
         elif len(pages) == 1:
-            segments = [_make_segment([pages[0]], [])]
+            segments = [make_segment([pages[0]], [])]
         else:
             decisions = self._decide_boundaries(pages)
             # Record failed calls so they are not silently swallowed.
@@ -199,7 +199,7 @@ def _group_pages(
 
     for i, decision in enumerate(decisions):
         if _is_boundary(decision):
-            segments.append(_make_segment(current_pages, confidences))
+            segments.append(make_segment(current_pages, confidences))
             current_pages = [pages[i + 1]]
             confidences = []
         else:
@@ -207,25 +207,8 @@ def _group_pages(
             if decision.result is not None:
                 confidences.append(decision.result.confidence)
 
-    segments.append(_make_segment(current_pages, confidences))
+    segments.append(make_segment(current_pages, confidences))
     return segments
-
-
-def _make_segment(
-    pages: list[PageContent], confidences: list[float]
-) -> DocumentSegment:
-    """Builds a DocumentSegment from its pages and within-segment confidences.
-
-    Single-page segments have no internal pair, hence confidence is None.
-    """
-    page_numbers = [p.page_number for p in pages]
-    return DocumentSegment(
-        start_page=min(page_numbers),
-        end_page=max(page_numbers),
-        raw_text="\n\n\n".join(p.raw_text for p in pages),
-        pages=list(pages),
-        confidence=mean(confidences) if confidences else None,
-    )
 
 
 def _page_payload(page: PageContent) -> dict:
