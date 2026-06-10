@@ -14,8 +14,10 @@ The pipeline has three stages, each with its own dataclass output (see
 
 1. **Read** (`reader/`) — PDF → `CaseFileDocument`: OCR/parse the PDF into
    structured, machine-readable pages and blocks. **Implemented.**
-2. **Segment** (`segmentation.py`) — `CaseFileDocument` → `SegmentationResult`:
-   detect document boundaries and group pages into `DocumentSegment`s. **Stub.**
+2. **Segment** (`segmentation/`) — `CaseFileDocument` → `SegmentationResult`:
+   detect document boundaries and group pages into `DocumentSegment`s.
+   **Implemented** — a `SegmentationStrategy` package with two interchangeable
+   LLM strategies (pairwise-boundary and full-context).
 3. **Label/Classify** (`labeling.py`) — classify each segment. **Stub.**
 
 ## Conventions
@@ -28,6 +30,15 @@ The pipeline has three stages, each with its own dataclass output (see
 - **Git workflow**: never push to `main` directly; branch per feature
   (`feature/...`, `fix/...`, `docs/...`), PR + one approval, then merge.
 - Type hints use modern syntax (`X | None`, `list[...]`), not `Optional`/`List`.
+- **Functional decomposition (Clean Code)**: keep functions small and
+  single-concern — roughly **≤ 25 lines** of body. When a function grows past
+  that or starts doing two things, **extract a named helper** instead of letting
+  it sprawl. Push each concern into its own function: payload-building, the LLM
+  call, deterministic repair, segment assembly are separate functions, not
+  inline blocks. Keep **pure helpers free of instance state** and group them
+  below the class (see the `# Pure helpers (no strategy state)` sections in the
+  segmentation strategies) so the side-effecting orchestration and the pure,
+  testable logic stay visibly separated.
 
 ## Environment & commands
 
@@ -57,19 +68,33 @@ resolve.
 | Path | Role |
 | --- | --- |
 | `datatypes.py` | All dataclasses (the pipeline's data contract). No logic. |
-| `reader/` | Stage 1: PDF → `CaseFileDocument`. The only substantial code. |
+| `reader/` | Stage 1: PDF → `CaseFileDocument`. |
 | `reader/options.py` | OCR/pipeline config (`_default_pipeline_options`, `default_pdf_format_options`). |
 | `reader/reader.py` | Document assembly: `read_document`, `ocr_convert_pdf`. |
 | `reader/mapping.py` | DocItem → `ContentBlock` mapping. |
 | `reader/__init__.py` | Re-exports `read_document` / `ocr_convert_pdf`. |
-| `segmentation.py` | Stage 2 stub (`segment_document`). |
+| `segmentation/` | Stage 2: `CaseFileDocument` → `SegmentationResult` (strategy package). |
+| `segmentation/strategy.py` | `SegmentationStrategy` ABC (the `segment_document` contract). |
+| `segmentation/pairwise_boundary/` | Strategy: per-adjacent-pair boundary classification (N−1 LLM calls). |
+| `segmentation/full_context/` | Strategy: whole-document single-pass classification (one LLM call + windowing fallback). |
+| `segmentation/utils.py` | Shared, strategy-agnostic helpers (`make_segment`). |
 | `labeling.py` | Stage 3 stub (`label_document`). |
-| `tests/explore/` | Scratch scripts for trying docling features (kept). |
+| `logging_config.py` | `get_logger`; used across all stages. |
+| `tests/explore/` | Scratch scripts for trying docling/segmentation features (kept). |
 
 Stage 1 is split into the `reader/` package along its natural seams: **options**
 (`options.py`), **document assembly** (`reader.py`, entry point `read_document`),
 and **DocItem → ContentBlock mapping** (`mapping.py`). Mapping helpers are
 module-private; the package `__init__` re-exports the public entry points.
+
+Stage 2 is the `segmentation/` package built on the **strategy pattern**: a
+`SegmentationStrategy` ABC (`strategy.py`) with one `segment_document` method,
+and one subpackage per concrete strategy (`pairwise_boundary/`, `full_context/`),
+each holding its own `prompt.py` + `segmentation.py`. Strategies carry their
+config as instance state (the full-context one bundles it in a
+`FullContextOptions` object) and are interchangeable. Both reuse `make_segment`
+from `segmentation/utils.py` rather than cross-importing between sibling
+strategy packages. The package `__init__` re-exports the strategies.
 
 ## docling knowledge (hard-won; read before touching the `reader/` package)
 
@@ -133,13 +158,28 @@ verified empirically against the test PDFs:
   pipeline class or backend without touching the reader.
 - `CaseFileDocument.document_id` auto-generates a UUID via
   `field(default_factory=..., kw_only=True)` — don't pass it manually.
+- Stage 2 is a **strategy package**: add a new approach as a subpackage under
+  `segmentation/` implementing `SegmentationStrategy`, not by editing an
+  existing strategy. Each stage owns its error contract — stage 2 uses
+  `SegmentationError` (`error_type` + `message` + optional `start_page`/`end_page`
+  scope; both `None` ⇒ whole document), **not** the reader's `PageExtractionError`.
+  `SegmentationResult.errors` holds only stage-2 errors; stage-1 read errors stay
+  on the `CaseFileDocument` (linked via `document_id`), they are not copied over.
+- The **full-context** strategy sends one compact *fingerprint* per page (not the
+  full text) and **must** pass `num_ctx` to `ollama.generate` — Ollama's default
+  (~2–4K) silently truncates the prompt. The model's segment list is never
+  trusted directly: a deterministic repair step guarantees gap-/overlap-free
+  coverage of every page regardless of model output.
 
 ## Known gaps / WIP
 
 - `labeling.py` imports `Segment` and `LabeledSegment` from `datatypes.py`, but
   those types do **not exist** there yet — stage 3's data contract is unfinished.
-- `segmentation.py` / `labeling.py` are bodyless stubs.
+  `labeling.py` is still a bodyless stub.
+- Stage 2 strategies are LLM-based and **unbenchmarked against ground truth** —
+  the marked test PDF (`tests/assets/LR_32 F 245_24_markiert.pdf`) is the
+  intended ground truth; boundary precision/recall per strategy is still TODO.
 - `was_ocr_applied` is derived from the confidence report's `ocr_score`, but the
   default Tesseract CLI leaves that `NaN`, so the flag is currently unreliable
-  (always `False`); a RapidOCR engine would restore it. Page error handling
-  (`CaseFileDocument.errors`) is still always `[]`.
+  (always `False`); a RapidOCR engine would restore it. Stage-1 page error
+  handling (`CaseFileDocument.errors`) is still always `[]`.
