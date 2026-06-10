@@ -9,12 +9,6 @@ import PdfUploadReview from './components/uploadpipeline/PdfUploadReview'
 import { CasesProvider } from './context/CasesContext'
 
 function App() {
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/'
-
-  if (path.startsWith('/pdf-viewer')) {
-    return <DocumentWorkspace />
-  }
-
   return (
     <BrowserRouter>
       <CasesProvider>
@@ -23,6 +17,7 @@ function App() {
             <Route path="/" element={<CaseHomePage />} />
             <Route path="/pdf-review/:caseId" element={<PdfUploadReview />} />
           </Route>
+          <Route path="/pdf-viewer/:caseId" element={<DocumentWorkspace />} />
         </Routes>
       </CasesProvider>
     </BrowserRouter>

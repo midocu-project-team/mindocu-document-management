@@ -43,7 +43,7 @@ export default function CaseHomePage() {
         handleStatusChange(caseId, 'done');
     }
     else if (caseItem.status === 'done') {
-        setNotice('Dieser Fall ist bereits abgeschlossen und kann nicht erneut geöffnet werden.');
+      navigator(`/pdf-viewer/${caseItem.id}`);
     }
 
   }
