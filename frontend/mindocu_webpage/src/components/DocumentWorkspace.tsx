@@ -1,24 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { Topbar } from './Topbar'
-import { InnerSidebarLeft, type Segment } from './InnerSidebarLeft'
+import { InnerSidebarLeft } from './InnerSidebarLeft'
 import { InnerSidebarRight } from './InnerSidebarRight'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
-import { PdfViewport } from './PdfViewport'
+import { PdfViewport, type PdfViewportHandle } from './PdfViewport'
+import { findSegmentIndexForPage, parseSegmentStartPage } from './segmentUtils'
+import { createInitialSegmentsByDocument, DEMO_WORKSPACE_DOCUMENTS } from './workspaceDocuments'
 
 type WorkspaceProps = {
   pdfUrl?: string | null
 }
-
-const demoSegments: Segment[] = [
-  { title: 'Aktendeckel', date: '12.02.2026', range: '1' },
-  { title: 'Antrag auf Umgangsänderung', date: '07.03.2026', range: '3-8' },
-  { title: 'Polizeibericht', date: '14.03.2026', range: '10-15' },
-  { title: 'Pflegebericht', date: '08.05.2026', range: '17-28' },
-]
-
-const demoSummary =
-  'Dem Aktendeckel des Amtsgerichts Würzburg vom 12.02.2026 entnehmen wir, dass es um eine familienrechtliche Auseinandersetzung mit mehreren Beteiligten geht. Die Verfahrensstruktur ist bereits vorgegeben und eignet sich gut für eine segmentierte Dokumentansicht mit Zusammenfassung, Chat und Folgefragen.'
 
 export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const [leftTab, setLeftTab] = useState<'Segmente' | 'Suche'>('Segmente')
@@ -27,24 +19,68 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'comment' | 'erase'>('select')
+  const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'comment'>('select')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageCount, setPageCount] = useState(23)
   const [zoom, setZoom] = useState(1)
+  const [selectedDocumentId, setSelectedDocumentId] = useState(DEMO_WORKSPACE_DOCUMENTS[0].id)
+  const [segmentsByDocument, setSegmentsByDocument] = useState(createInitialSegmentsByDocument)
+  const [showRelevantSegments, setShowRelevantSegments] = useState(true)
+  const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(true)
+  const pdfViewportRef = useRef<PdfViewportHandle>(null)
 
-  const filteredSegments = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    if (!query) {
-      return demoSegments
+  const workspaceDocuments = useMemo(
+    () =>
+      DEMO_WORKSPACE_DOCUMENTS.map((document, index) =>
+        index === 0 && pdfUrl ? { ...document, pdfUrl } : document,
+      ),
+    [pdfUrl],
+  )
+
+  const activeDocument =
+    workspaceDocuments.find((document) => document.id === selectedDocumentId) ?? workspaceDocuments[0]
+
+  const activeSegments = segmentsByDocument[activeDocument.id] ?? activeDocument.segments
+
+  const activeSegment = activeSegments[selectedSegmentIndex] ?? activeSegments[0]
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+
+    const segmentIndex = findSegmentIndexForPage(activeSegments, page)
+    if (segmentIndex >= 0) {
+      setSelectedSegmentIndex(segmentIndex)
+    }
+  }
+
+  const handleSelectDocument = (documentId: string) => {
+    setSelectedDocumentId(documentId)
+    setCurrentPage(1)
+    setSelectedSegmentIndex(0)
+    setSearchQuery('')
+  }
+
+  const handleSelectSegment = (index: number) => {
+    setSelectedSegmentIndex(index)
+
+    const segment = activeSegments[index]
+    if (!segment) {
+      return
     }
 
-    return demoSegments.filter((segment) => {
-      const haystack = `${segment.title} ${segment.date} ${segment.range}`.toLowerCase()
-      return haystack.includes(query)
-    })
-  }, [searchQuery])
+    pdfViewportRef.current?.goToPage(parseSegmentStartPage(segment.range))
+  }
 
-  const clampZoom = (value: number) => Math.min(1.5, Math.max(0.72, value))
+  const handleToggleSelectedSegmentRelevance = () => {
+    setSegmentsByDocument((previous) => ({
+      ...previous,
+      [activeDocument.id]: previous[activeDocument.id].map((segment, index) =>
+        index === selectedSegmentIndex ? { ...segment, relevant: !segment.relevant } : segment,
+      ),
+    }))
+  }
+
+  const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value))
 
   const workspaceGridStyle = {
     gridTemplateColumns: `${leftSidebarOpen ? '284px' : '0px'} minmax(0, 1fr) ${rightSidebarOpen ? '380px' : '0px'}`,
@@ -68,9 +104,14 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
             <InnerSidebarLeft
               activeTab={leftTab}
               onTabChange={setLeftTab}
-              segments={filteredSegments}
+              segments={activeSegments}
               selectedSegmentIndex={selectedSegmentIndex}
-              onSelectSegment={setSelectedSegmentIndex}
+              onSelectSegment={handleSelectSegment}
+              showRelevantSegments={showRelevantSegments}
+              showIrrelevantSegments={showIrrelevantSegments}
+              onToggleShowRelevantSegments={() => setShowRelevantSegments((value) => !value)}
+              onToggleShowIrrelevantSegments={() => setShowIrrelevantSegments((value) => !value)}
+              onToggleSelectedSegmentRelevance={handleToggleSelectedSegmentRelevance}
               query={searchQuery}
               onQueryChange={setSearchQuery}
               onClearQuery={() => setSearchQuery('')}
@@ -82,31 +123,38 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
               <WorkspaceToolbar
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
-                documentLabel="Hauptakte"
+                documents={workspaceDocuments}
+                selectedDocumentId={selectedDocumentId}
+                onSelectDocument={handleSelectDocument}
                 currentPage={currentPage}
                 pageCount={pageCount}
                 zoom={zoom}
                 onZoomOut={() => setZoom((value) => clampZoom(value - 0.08))}
                 onZoomIn={() => setZoom((value) => clampZoom(value + 0.08))}
-                onFitToPage={() => setZoom(0.92)}
               />
             </div>
 
             <PdfViewport
-              pdfUrl={pdfUrl}
+              ref={pdfViewportRef}
+              key={activeDocument.id}
+              pdfUrl={activeDocument.pdfUrl}
               currentPage={currentPage}
               pageCount={pageCount}
               zoom={zoom}
-              onPageChange={setCurrentPage}
+              onPageChange={handlePageChange}
               onPageCountChange={setPageCount}
               onZoomIn={() => setZoom((value) => clampZoom(value + 0.08))}
               onZoomOut={() => setZoom((value) => clampZoom(value - 0.08))}
-              onFitToPage={() => setZoom(0.92)}
             />
           </main>
 
           <div className={`mindocu-grid-pane${rightSidebarOpen ? '' : ' is-collapsed'}`} aria-hidden={!rightSidebarOpen}>
-            <InnerSidebarRight activeTab={rightTab} onTabChange={setRightTab} summary={demoSummary} />
+            <InnerSidebarRight
+              activeTab={rightTab}
+              onTabChange={setRightTab}
+              segmentTitle={activeSegment.title}
+              summary={activeSegment.summary}
+            />
           </div>
         </div>
       </div>

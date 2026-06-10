@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
+
+export type PdfViewportHandle = {
+  goToPage: (page: number) => void
+}
 
 type PdfViewportProps = {
   pdfUrl?: string | null
@@ -13,8 +17,9 @@ type PdfViewportProps = {
   onPageCountChange: (pageCount: number) => void
   onZoomIn: () => void
   onZoomOut: () => void
-  onFitToPage: () => void
 }
+
+const PDF_BASE_WIDTH = 720
 
 const demoParagraphs = [
   {
@@ -31,27 +36,93 @@ const demoParagraphs = [
   },
 ]
 
-export function PdfViewport({
-  pdfUrl,
-  currentPage,
-  pageCount,
-  zoom,
-  onPageChange,
-  onPageCountChange,
-  onZoomIn,
-  onZoomOut,
-  onFitToPage,
-}: PdfViewportProps) {
+export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
+  {
+    pdfUrl,
+    currentPage,
+    pageCount,
+    zoom,
+    onPageChange,
+    onPageCountChange,
+    onZoomIn,
+    onZoomOut,
+  },
+  ref,
+) {
   const pageRefs = useRef<Array<HTMLDivElement | null>>([])
   const viewportRef = useRef<HTMLDivElement | null>(null)
+  const onPageChangeRef = useRef(onPageChange)
+  const isScrollingRef = useRef(false)
   const [loadedPages, setLoadedPages] = useState(0)
 
   const displayPageCount = pdfUrl ? loadedPages || pageCount : pageCount
 
-  const pageWidth = useMemo(() => {
-    const baseWidth = pdfUrl ? 720 : 760
-    return Math.round(baseWidth * zoom)
-  }, [pdfUrl, zoom])
+  onPageChangeRef.current = onPageChange
+
+  const getMostVisiblePage = useCallback(() => {
+    const root = viewportRef.current
+    if (!root) {
+      return 1
+    }
+
+    const rootRect = root.getBoundingClientRect()
+    let bestPage = 1
+    let bestVisibleRatio = 0
+
+    pageRefs.current.forEach((pageElement, index) => {
+      if (!pageElement) {
+        return
+      }
+
+      const pageRect = pageElement.getBoundingClientRect()
+      const visibleTop = Math.max(pageRect.top, rootRect.top)
+      const visibleBottom = Math.min(pageRect.bottom, rootRect.bottom)
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop)
+      const visibleRatio = pageRect.height > 0 ? visibleHeight / pageRect.height : 0
+
+      if (visibleRatio > bestVisibleRatio) {
+        bestVisibleRatio = visibleRatio
+        bestPage = index + 1
+      }
+    })
+
+    return bestPage
+  }, [])
+
+  useEffect(() => {
+    const root = viewportRef.current
+    if (!root) {
+      return undefined
+    }
+
+    let scrollIdleTimer: ReturnType<typeof setTimeout> | undefined
+
+    const commitPageAfterScroll = () => {
+      isScrollingRef.current = false
+      onPageChangeRef.current(getMostVisiblePage())
+    }
+
+    const onScroll = () => {
+      isScrollingRef.current = true
+
+      if (scrollIdleTimer) {
+        clearTimeout(scrollIdleTimer)
+      }
+
+      scrollIdleTimer = setTimeout(commitPageAfterScroll, 150)
+    }
+
+    root.addEventListener('scroll', onScroll, { passive: true })
+    root.addEventListener('scrollend', commitPageAfterScroll)
+
+    return () => {
+      root.removeEventListener('scroll', onScroll)
+      root.removeEventListener('scrollend', commitPageAfterScroll)
+      if (scrollIdleTimer) {
+        clearTimeout(scrollIdleTimer)
+      }
+    }
+  }, [getMostVisiblePage, pdfUrl, displayPageCount])
 
   useEffect(() => {
     const root = viewportRef.current
@@ -61,6 +132,10 @@ export function PdfViewport({
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (isScrollingRef.current) {
+          return
+        }
+
         const mostVisibleEntry = entries
           .filter((entry) => entry.isIntersecting)
           .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
@@ -71,7 +146,7 @@ export function PdfViewport({
 
         const page = Number((mostVisibleEntry.target as HTMLElement).dataset.page)
         if (!Number.isNaN(page)) {
-          onPageChange(page)
+          onPageChangeRef.current(page)
         }
       },
       {
@@ -87,17 +162,18 @@ export function PdfViewport({
     })
 
     return () => observer.disconnect()
-  }, [currentPage, onPageChange, pdfUrl, pageCount, zoom])
+  }, [pdfUrl, pageCount, zoom, displayPageCount])
 
-  useEffect(() => {
-    pageRefs.current[currentPage - 1]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }, [currentPage])
+  const goToPage = useCallback(
+    (page: number) => {
+      const safePage = Math.min(Math.max(page, 1), displayPageCount)
+      onPageChange(safePage)
+      pageRefs.current[safePage - 1]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    },
+    [displayPageCount, onPageChange],
+  )
 
-  const goToPage = (page: number) => {
-    const safePage = Math.min(Math.max(page, 1), displayPageCount)
-    onPageChange(safePage)
-    pageRefs.current[safePage - 1]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }
+  useImperativeHandle(ref, () => ({ goToPage }), [goToPage])
 
   const handlePdfLoad = ({ numPages }: { numPages: number }) => {
     setLoadedPages(numPages)
@@ -128,7 +204,7 @@ export function PdfViewport({
                 >
                   <Page
                     pageNumber={pageNumber}
-                    width={pageWidth}
+                    width={Math.round(PDF_BASE_WIDTH * zoom)}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                   />
@@ -223,4 +299,4 @@ export function PdfViewport({
       </div>
     </section>
   )
-}
+})

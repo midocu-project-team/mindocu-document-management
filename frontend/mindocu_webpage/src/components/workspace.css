@@ -11,6 +11,9 @@
   --mindocu-text-strong: #1e2430;
   --mindocu-muted: #697385;
   --mindocu-background-pdf: #f0f0f0;
+  --mindocu-scrollbar-track: #f0f0f0;
+  --mindocu-scrollbar-thumb: #c5c9d4;
+  --mindocu-scrollbar-thumb-hover: #9aa3b5;
   --mindocu-shadow:
     rgba(16, 24, 40, 0.08) 0 16px 34px -16px, rgba(16, 24, 40, 0.08) 0 8px 16px -8px;
   --mindocu-right-sidebar-width: 320px;
@@ -278,7 +281,7 @@
 }
 
 .mindocu-inner-panel {
-  padding: 6px 6px 6px;
+  padding: 12px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -374,6 +377,108 @@
   font-weight: 700;
 }
 
+.mindocu-segment-filter {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.mindocu-segment-filter-trigger {
+  border: 0;
+  cursor: pointer;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 247, 250, 0.96);
+  color: var(--mindocu-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mindocu-segment-filter-trigger.is-open,
+.mindocu-segment-filter-trigger:hover,
+.mindocu-segment-filter-trigger:focus-visible {
+  outline: none;
+  color: var(--mindocu-text-strong);
+  box-shadow: 0 0 0 3px rgba(51, 72, 201, 0.11);
+}
+
+.mindocu-segment-filter-trigger .is-rotated {
+  transform: rotate(180deg);
+}
+
+.mindocu-segment-filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 260px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--mindocu-line);
+  background: #ffffff;
+  box-shadow: var(--mindocu-shadow);
+}
+
+.mindocu-segment-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+}
+
+.mindocu-segment-filter-visibility {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: transparent;
+  color: var(--mindocu-muted);
+}
+
+.mindocu-segment-filter-visibility:hover,
+.mindocu-segment-filter-visibility:focus-visible {
+  outline: none;
+  background: rgba(51, 72, 201, 0.08);
+  color: var(--mindocu-blue);
+}
+
+.mindocu-segment-filter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mindocu-text-strong);
+}
+
+.mindocu-segment-filter-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--mindocu-line);
+}
+
+.mindocu-segment-filter-action {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  color: var(--mindocu-text-strong);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mindocu-segment-filter-action:hover,
+.mindocu-segment-filter-action:focus-visible {
+  outline: none;
+  background: rgba(51, 72, 201, 0.08);
+}
+
 .mindocu-segment-list {
   display: flex;
   flex-direction: column;
@@ -405,6 +510,10 @@
 
 .mindocu-segment-card:not(.is-active) .mindocu-segment-card-meta {
   color: rgba(105, 115, 133, 0.68);
+}
+
+.mindocu-segment-card.is-irrelevant:not(.is-active) .mindocu-segment-card-title {
+  color: rgba(105, 115, 133, 0.58);
 }
 
 .mindocu-segment-card-title,
@@ -559,6 +668,64 @@
   color: var(--mindocu-muted);
 }
 
+.mindocu-toolbar-pill.is-open {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(51, 72, 201, 0.11);
+}
+
+.mindocu-toolbar-pill .is-rotated {
+  transform: rotate(180deg);
+}
+
+.mindocu-toolbar-dropdown {
+  position: relative;
+}
+
+.mindocu-toolbar-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--mindocu-line);
+  background: #ffffff;
+  box-shadow: var(--mindocu-shadow);
+}
+
+.mindocu-toolbar-dropdown-item {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  color: var(--mindocu-text-strong);
+}
+
+.mindocu-toolbar-dropdown-item:hover,
+.mindocu-toolbar-dropdown-item:focus-visible,
+.mindocu-toolbar-dropdown-item.is-active {
+  outline: none;
+  background: rgba(51, 72, 201, 0.08);
+}
+
+.mindocu-toolbar-dropdown-item-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.mindocu-toolbar-dropdown-item-meta {
+  font-size: 0.72rem;
+  color: var(--mindocu-muted);
+}
+
 .mindocu-pdf-stage {
   position: relative;
   flex: 1;
@@ -596,6 +763,25 @@
   scroll-behavior: smooth;
   padding: 0 8px 24px;
   scrollbar-gutter: stable both-edges;
+  scrollbar-color: var(--mindocu-scrollbar-thumb) var(--mindocu-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+.mindocu-pdf-scrollarea::-webkit-scrollbar {
+  width: 12px;
+}
+
+.mindocu-pdf-scrollarea::-webkit-scrollbar-track {
+  background: var(--mindocu-scrollbar-track);
+}
+
+.mindocu-pdf-scrollarea::-webkit-scrollbar-thumb {
+  background: var(--mindocu-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.mindocu-pdf-scrollarea::-webkit-scrollbar-thumb:hover {
+  background: var(--mindocu-scrollbar-thumb-hover);
 }
 
 .mindocu-pdf-pagewrap,

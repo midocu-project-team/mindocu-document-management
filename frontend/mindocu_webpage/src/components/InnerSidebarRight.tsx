@@ -3,6 +3,7 @@ import RightSidebarToolbar from './RightSidebarToolbar'
 type InnerSidebarRightProps = {
   activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions'
   onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void
+  segmentTitle: string
   summary: string
 }
 
@@ -12,7 +13,12 @@ const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab']}> = [
   { label: 'Chat Sessions'},
 ]
 
-export function InnerSidebarRight({ activeTab, onTabChange, summary }: InnerSidebarRightProps) {
+export function InnerSidebarRight({
+  activeTab,
+  onTabChange,
+  segmentTitle,
+  summary,
+}: InnerSidebarRightProps) {
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--right">
       <div className="mindocu-inner-tabs mindocu-inner-tabs--compact" role="tablist" aria-label="Seitenpanel">
@@ -31,14 +37,14 @@ export function InnerSidebarRight({ activeTab, onTabChange, summary }: InnerSide
       <div className="mindocu-inner-panel mindocu-inner-panel--summary">
         {activeTab === 'Zusammenfassung' ? (
           <>
-            <div className="mindocu-summary-title">Aktendeckel</div>
+            <div className="mindocu-summary-title">{segmentTitle}</div>
             <p className="mindocu-summary-text">{summary}</p>
             <p className="mindocu-summary-note">KI generierte Zusammenfassung — nur zur Orientierung</p>
 
-            <RightSidebarToolbar
+            {/* <RightSidebarToolbar
               onRefresh={() => console.log('refresh summary')}
               onToggleLayout={() => console.log('toggle summary layout')}
-            />
+            /> */}
           </>
         ) : null}
 
