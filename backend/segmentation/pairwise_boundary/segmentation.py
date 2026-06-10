@@ -3,6 +3,7 @@ import time
 from typing import NamedTuple
 
 import ollama
+from pydantic import BaseModel, Field
 
 from datatypes import (
     CaseFileDocument,
@@ -11,7 +12,6 @@ from datatypes import (
     SegmentationError,
     SegmentationErrorType,
     SegmentationResult,
-    SimilarityResult,
 )
 from logging_config import get_logger
 from segmentation.pairwise_boundary.prompt import SIMILARITY_SYSTEM_PROMPT
@@ -24,11 +24,16 @@ logger.setLevel(level="DEBUG")
 DEFAULT_SIMILARITY_MODEL = "gemma4:e4b"
 
 
+class _SimilarityResult(BaseModel):
+    confidence: float = Field(ge=0, le=1)
+    are_similar: bool
+    # reasoning: str # take out to test model performance
+
 class _PairDecision(NamedTuple):
     """Boundary decision for the adjacent pair (pages[index], pages[index+1])."""
 
     index: int
-    result: SimilarityResult | None  # None => the LLM call raised
+    result: _SimilarityResult | None  # None => the LLM call raised
     error: str | None = None
 
 
@@ -118,7 +123,7 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
 
     def _decide_page_similarity(
         self, previous_page: PageContent, contestant_page: PageContent
-    ) -> SimilarityResult:
+    ) -> _SimilarityResult:
         """Asks the LLM whether contestant_page continues previous_page's document.
 
         Only the two adjacent pages are sent (as compact block lists); the reply
@@ -137,7 +142,7 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
             model=self.model,
             prompt=user_prompt,
             system=SIMILARITY_SYSTEM_PROMPT,
-            format=SimilarityResult.model_json_schema(),
+            format=_SimilarityResult.model_json_schema(),
             think=False,
             options={"temperature": self.temperature},
             keep_alive=self.keep_alive,
@@ -147,7 +152,7 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
             time.perf_counter() - start_time,
             _format_ollama_timing(response),
         )
-        return SimilarityResult.model_validate_json(response.response)
+        return _SimilarityResult.model_validate_json(response.response)
 
 
 # ============================================================================

@@ -110,10 +110,6 @@ class SegmentationResult(BaseModel):
     errors: list[SegmentationError]  # Stage-2 errors (not page-bound)
 
 
-class SimilarityResult(BaseModel):
-    confidence: float = Field(ge=0, le=1)
-    are_similar: bool
-    # reasoning: str # take out to test model performance
 
 
 ####################################
