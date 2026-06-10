@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "docling>=2.96.1",
     "ipython>=9.14.0",
+    "mlx-lm>=0.31.3",
     "ollama>=0.6.2",
     "rich>=15.0.0",
 ]
