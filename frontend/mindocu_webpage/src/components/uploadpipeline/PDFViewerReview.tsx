@@ -20,9 +20,10 @@ interface PdfEntry {
 
 interface PDFViewerReviewProps {
     onValidChange?: (valid: boolean) => void;
+    onFilesAdded?: (count: number) => void;
 }
 
-export default function PDFViewerReview({ onValidChange }: PDFViewerReviewProps) {
+export default function PDFViewerReview({ onValidChange, onFilesAdded }: PDFViewerReviewProps) {
         const inputRef = useRef<HTMLInputElement>(null);
         const scrollRef = useRef<HTMLDivElement>(null);
         const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -85,6 +86,7 @@ export default function PDFViewerReview({ onValidChange }: PDFViewerReviewProps)
             setSelectedIndex(updated.length - 1);
             return updated;
         });
+        onFilesAdded?.(newEntries.length);
         setCurrentPage(1);
         setInputValue('1');
         e.target.value = '';
@@ -145,13 +147,13 @@ export default function PDFViewerReview({ onValidChange }: PDFViewerReviewProps)
                 </Grid>
 
                 {/* Right: PDF viewer */}
-                <Grid size={9}>
+                <Grid size={6}>
                     {selectedPdf && (
-                        <Box sx={{ position: 'relative', height: '100%' }}>
+                        <Box sx={{ position: 'relative', height: '100%', width: 'fit-content', maxWidth: '100%', mx: 'auto' }}>
                             <Box
                                 ref={scrollRef}
                                 onScroll={handleScroll}
-                                sx={{ overflowY: 'auto', maxHeight: '75vh' }}
+                                sx={{ overflowY: 'auto', overflowX: 'auto', maxHeight: '75vh' }}
                             >
                                 <Document
                                     file={selectedPdf.url}

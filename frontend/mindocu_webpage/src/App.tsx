@@ -3,16 +3,19 @@ import './App.css'
 import MainLayout from './layouts/MainLayout'
 import CaseHomePage from './pages/CaseHomePage'
 import PdfUploadReview from './components/uploadpipeline/PdfUploadReview'
+import { CasesProvider } from './context/CasesContext'
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<CaseHomePage />} />
-          <Route path="/pdf-review" element={<PdfUploadReview />} />
-        </Route>
-      </Routes>
+      <CasesProvider>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<CaseHomePage />} />
+            <Route path="/pdf-review/:caseId" element={<PdfUploadReview />} />
+          </Route>
+        </Routes>
+      </CasesProvider>
     </BrowserRouter>
   )
 }
