@@ -45,8 +45,10 @@ class FullContextOptions(BaseModel):
 
     # Per-block text cap and how many leading blocks to keep in a page
     # fingerprint -- boundary cues sit at the top of a page (letterhead/heading).
-    max_chars_per_block: int = 200
-    head_blocks: int = 6
+    # None means "no cap": keep every block / each block's full text. Default is
+    # None (full text of all blocks); set ints to trim for very large documents.
+    max_chars_per_block: int | None = None
+    head_blocks: int | None = None
 
     # Sliding-window parameters for the large-document fallback.
     window_pages: int = 80
@@ -226,8 +228,10 @@ def _page_fingerprint(page: PageContent, options: FullContextOptions) -> dict:
     """Compact page representation: leading blocks, capped text, no bbox.
 
     Only the first `head_blocks` blocks are kept -- boundary cues (letterhead,
-    heading, sender) sit at the top of a page -- and each block's text is capped.
-    Anchored on `page_number`, the key the model references in its output.
+    heading, sender) sit at the top of a page -- and each block's text is capped
+    at `max_chars_per_block`. Either limit may be None ("no cap"): a None upper
+    slice bound keeps all blocks / each block's full text. Anchored on
+    `page_number`, the key the model references in its output.
     """
     blocks = page.blocks[: options.head_blocks]
     return {
