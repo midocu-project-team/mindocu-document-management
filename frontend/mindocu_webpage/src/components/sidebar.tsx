@@ -1,11 +1,10 @@
+import { WorkspaceSidebar } from './WorkspaceSidebar'
+
+// Backwards-compatible alias: `Sidebar` previously existed as the main
+// left navigation component. Export a `Sidebar` component that renders the
+// existing `WorkspaceSidebar` so older imports or expectations keep working.
 export function Sidebar() {
-  return (
-    <section id="sidebar">
-      <h1>Logo</h1>
-      <nav>
-        <a href="/">Dashboard</a>
-        <a href="/documents">Documents</a>
-      </nav>
-    </section>
-  )
+  return <WorkspaceSidebar />
 }
+
+export default Sidebar
