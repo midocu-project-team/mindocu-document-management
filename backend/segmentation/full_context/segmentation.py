@@ -1,7 +1,6 @@
 import json
 import time
 
-import ollama
 from pydantic import BaseModel, Field
 
 from datatypes import (
@@ -12,6 +11,7 @@ from datatypes import (
     SegmentationErrorType,
     SegmentationResult,
 )
+from llm import LLMProvider
 from logging_config import get_logger
 from segmentation.full_context.prompt import FULL_CONTEXT_SYSTEM_PROMPT
 from segmentation.strategy import SegmentationStrategy
@@ -20,27 +20,20 @@ from segmentation.utils import make_segment
 logger = get_logger(__name__)
 logger.setLevel(level="DEBUG")
 
-DEFAULT_MODEL = "qwen2.5:14b"
-
 
 class FullContextOptions(BaseModel):
     """Configuration for FullContextSegmentationStrategy.
 
-    Bundled into one object so the strategy constructor stays a single argument
-    instead of a long parameter list (mirrors reader/options.py).
+    Bundled into one object so the strategy constructor stays small (mirrors
+    reader/options.py). Endpoint properties (model name, context size, ...)
+    live on the injected LLMProvider, not here.
     """
 
-    model: str = DEFAULT_MODEL
     temperature: float = 0.0
-    keep_alive: int = 45 * 60  # keep the model loaded for 45 min
 
-    # 128K is the trained context ceiling of current local models (Llama 3.x /
-    # Gemma 3 / Mistral Nemo / Qwen2.5-128K). Far above the ~20-35K-token max real
-    # doc -> pure headroom. Ollama clamps this down to the model's trained max.
-    num_ctx: int = 131072
     # Windowing trigger: if the estimated input exceeds this, fall back to
-    # sliding windows. Kept below num_ctx to leave room for the system prompt and
-    # the generated segment list.
+    # sliding windows. Keep below the provider's context window to leave room
+    # for the system prompt and the generated segment list.
     max_input_tokens: int = 100_000
 
     # Per-block text cap and how many leading blocks to keep in a page
@@ -87,7 +80,10 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
     it into gap-/overlap-free segments covering every page exactly once.
     """
 
-    def __init__(self, options: FullContextOptions | None = None) -> None:
+    def __init__(
+        self, provider: LLMProvider, options: FullContextOptions | None = None
+    ) -> None:
+        self.provider = provider
         self.options = options or FullContextOptions()
 
     def segment_document(self, doc: CaseFileDocument) -> SegmentationResult:
@@ -197,26 +193,20 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
         return segments, errors
 
     def _call_llm(self, payload: str) -> _SegmentationPlan:
-        """One grammar-constrained Ollama call returning a _SegmentationPlan."""
-        opts = self.options
+        """One schema-constrained provider call returning a _SegmentationPlan."""
         start_time = time.perf_counter()
-        response = ollama.generate(
-            model=opts.model,
-            prompt=payload,
+        response = self.provider.generate(
+            payload,
             system=FULL_CONTEXT_SYSTEM_PROMPT,
-            format=_SegmentationPlan.model_json_schema(),
-            think=False,
-            # num_ctx is REQUIRED: Ollama's default (~2-4K) silently truncates the
-            # prompt, so without it the model would only ever see the first pages.
-            options={"temperature": opts.temperature, "num_ctx": opts.num_ctx},
-            keep_alive=opts.keep_alive,
+            schema=_SegmentationPlan,
+            temperature=self.options.temperature,
         )
         logger.debug(
             "LLM full-context call: wall=%.2fs | %s",
             time.perf_counter() - start_time,
-            _format_ollama_timing(response),
+            response.timing_summary(),
         )
-        return _SegmentationPlan.model_validate_json(response.response)
+        return _SegmentationPlan.model_validate_json(response.text)
 
 
 # ============================================================================
@@ -330,27 +320,3 @@ def _repair_segments(
 def _build(pages: list[PageContent], confidence: float | None) -> DocumentSegment:
     """make_segment with a single explicit confidence (vs. averaged pair scores)."""
     return make_segment(pages, [confidence] if confidence is not None else [])
-
-
-def _format_ollama_timing(response: ollama.GenerateResponse) -> str:
-    """Breaks an Ollama call's wall-clock into load / prefill / decode.
-
-    Durations come back in nanoseconds and any field may be None.
-    """
-
-    def secs(ns: int | None) -> float:
-        return (ns or 0) / 1e9
-
-    def rate(count: int | None, ns: int | None) -> float:
-        duration = secs(ns)
-        return count / duration if count and duration else 0.0
-
-    return (
-        f"prompt={response.prompt_eval_count or 0} tok "
-        f"prefill={secs(response.prompt_eval_duration):.2f}s "
-        f"({rate(response.prompt_eval_count, response.prompt_eval_duration):.0f} tok/s) | "
-        f"gen={response.eval_count or 0} tok "
-        f"decode={secs(response.eval_duration):.2f}s "
-        f"({rate(response.eval_count, response.eval_duration):.0f} tok/s) | "
-        f"load={secs(response.load_duration):.2f}s"
-    )

@@ -2,7 +2,6 @@ import json
 import time
 from typing import NamedTuple
 
-import ollama
 from pydantic import BaseModel, Field
 
 from datatypes import (
@@ -13,6 +12,7 @@ from datatypes import (
     SegmentationErrorType,
     SegmentationResult,
 )
+from llm import LLMProvider
 from logging_config import get_logger
 from segmentation.pairwise_boundary.prompt import SIMILARITY_SYSTEM_PROMPT
 from segmentation.strategy import SegmentationStrategy
@@ -20,8 +20,6 @@ from segmentation.utils import make_segment
 
 logger = get_logger(__name__)
 logger.setLevel(level="DEBUG")
-
-DEFAULT_SIMILARITY_MODEL = "gemma4:e4b"
 
 
 class _SimilarityResult(BaseModel):
@@ -47,19 +45,14 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
 
     Each adjacent page pair is judged independently for whether the second page
     continues the first's document; the boolean boundaries are then turned into
-    segments in a single pass. The model and sampling config are instance state,
-    so different instances can run different models without touching the logic.
+    segments in a single pass. The LLM endpoint is an injected provider, so
+    different instances can run different models/backends without touching the
+    logic.
     """
 
-    def __init__(
-        self,
-        model: str = DEFAULT_SIMILARITY_MODEL,
-        temperature: float = 0.0,
-        keep_alive: int = 45 * 60,  # keep the model loaded for 45 min
-    ) -> None:
-        self.model = model
+    def __init__(self, provider: LLMProvider, temperature: float = 0.0) -> None:
+        self.provider = provider
         self.temperature = temperature
-        self.keep_alive = keep_alive
 
     def segment_document(self, doc: CaseFileDocument) -> SegmentationResult:
         """Splits a case file into per-document segments."""
@@ -138,52 +131,23 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
             ensure_ascii=False,
         )
 
-        response = ollama.generate(
-            model=self.model,
-            prompt=user_prompt,
+        response = self.provider.generate(
+            user_prompt,
             system=SIMILARITY_SYSTEM_PROMPT,
-            format=_SimilarityResult.model_json_schema(),
-            think=False,
-            options={"temperature": self.temperature},
-            keep_alive=self.keep_alive,
+            schema=_SimilarityResult,
+            temperature=self.temperature,
         )
         logger.debug(
             "LLM similarity call: wall=%.2fs | %s",
             time.perf_counter() - start_time,
-            _format_ollama_timing(response),
+            response.timing_summary(),
         )
-        return _SimilarityResult.model_validate_json(response.response)
+        return _SimilarityResult.model_validate_json(response.text)
 
 
 # ============================================================================
 #  Pure helpers (no strategy state)
 # ============================================================================
-
-
-def _format_ollama_timing(response: ollama.GenerateResponse) -> str:
-    """Breaks an Ollama call's wall-clock into load / prefill / decode.
-
-    Ollama returns these counters per call; splitting them tells whether a slow
-    decision is prefill-bound (large prompt), decode-bound (long output) or just
-    a model reload. Durations come back in nanoseconds and any field may be None.
-    """
-
-    def secs(ns: int | None) -> float:
-        return (ns or 0) / 1e9
-
-    def rate(count: int | None, ns: int | None) -> float:
-        duration = secs(ns)
-        return count / duration if count and duration else 0.0
-
-    return (
-        f"prompt={response.prompt_eval_count or 0} tok "
-        f"prefill={secs(response.prompt_eval_duration):.2f}s "
-        f"({rate(response.prompt_eval_count, response.prompt_eval_duration):.0f} tok/s) | "
-        f"gen={response.eval_count or 0} tok "
-        f"decode={secs(response.eval_duration):.2f}s "
-        f"({rate(response.eval_count, response.eval_duration):.0f} tok/s) | "
-        f"load={secs(response.load_duration):.2f}s"
-    )
 
 
 def _is_boundary(decision: _PairDecision) -> bool:
