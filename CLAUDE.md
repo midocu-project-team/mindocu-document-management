@@ -18,7 +18,9 @@ The pipeline has three stages, each with its own dataclass output (see
    detect document boundaries and group pages into `DocumentSegment`s.
    **Implemented** — a `SegmentationStrategy` package with two interchangeable
    LLM strategies (pairwise-boundary and full-context).
-3. **Label/Classify** (`labeling.py`) — classify each segment. **Stub.**
+3. **Enrich** (`labeling.py`) — `SegmentationResult` → `EnrichmentResult`:
+   enrich each segment with a title, an AI summary and a keyword-based
+   relevance flag. Data contract exists in `datatypes.py`; logic is a **stub**.
 
 ## Conventions
 
@@ -78,7 +80,11 @@ resolve.
 | `segmentation/pairwise_boundary/` | Strategy: per-adjacent-pair boundary classification (N−1 LLM calls). |
 | `segmentation/full_context/` | Strategy: whole-document single-pass classification (one LLM call + windowing fallback). |
 | `segmentation/utils.py` | Shared, strategy-agnostic helpers (`make_segment`). |
-| `labeling.py` | Stage 3 stub (`label_document`). |
+| `llm/` | Interchangeable LLM backends behind one `LLMProvider` ABC (injected into stage-2 strategies). |
+| `llm/provider.py` | `LLMProvider` ABC + backend-agnostic `LLMResponse` (text, token counts, durations in seconds). |
+| `llm/ollama_provider.py` | Ollama backend; holds `num_ctx`/`keep_alive`/`think`; native grammar-constrained JSON. |
+| `llm/mlx_provider.py` | mlx-lm backend (in-process, Apple Silicon); outlines for constrained JSON. |
+| `labeling.py` | Stage 3 stub (`enrich_segments`). |
 | `logging_config.py` | `get_logger`; used across all stages. |
 | `tests/explore/` | Scratch scripts for trying docling/segmentation features (kept). |
 
@@ -90,11 +96,12 @@ module-private; the package `__init__` re-exports the public entry points.
 Stage 2 is the `segmentation/` package built on the **strategy pattern**: a
 `SegmentationStrategy` ABC (`strategy.py`) with one `segment_document` method,
 and one subpackage per concrete strategy (`pairwise_boundary/`, `full_context/`),
-each holding its own `prompt.py` + `segmentation.py`. Strategies carry their
-config as instance state (the full-context one bundles it in a
-`FullContextOptions` object) and are interchangeable. Both reuse `make_segment`
-from `segmentation/utils.py` rather than cross-importing between sibling
-strategy packages. The package `__init__` re-exports the strategies.
+each holding its own `prompt.py` + `segmentation.py`. Strategies take an
+`LLMProvider` (from `llm/`) as a **required** constructor argument plus their
+own config (the full-context one bundles it in a `FullContextOptions` object)
+and are interchangeable. Both reuse `make_segment` from `segmentation/utils.py`
+rather than cross-importing between sibling strategy packages. The package
+`__init__` re-exports the strategies.
 
 ## docling knowledge (hard-won; read before touching the `reader/` package)
 
@@ -165,17 +172,38 @@ verified empirically against the test PDFs:
   scope; both `None` ⇒ whole document), **not** the reader's `PageExtractionError`.
   `SegmentationResult.errors` holds only stage-2 errors; stage-1 read errors stay
   on the `CaseFileDocument` (linked via `document_id`), they are not copied over.
-- The **full-context** strategy sends one compact *fingerprint* per page (not the
-  full text) and **must** pass `num_ctx` to `ollama.generate` — Ollama's default
-  (~2–4K) silently truncates the prompt. The model's segment list is never
-  trusted directly: a deterministic repair step guarantees gap-/overlap-free
-  coverage of every page regardless of model output.
+- **LLM access goes through `llm/`** (dependency injection): strategies depend
+  only on the `LLMProvider` ABC (`generate(prompt, *, system, schema,
+  temperature, max_tokens) -> LLMResponse`); concrete backends are injected.
+  Endpoint properties (model name, Ollama's `num_ctx`/`keep_alive`/`think`,
+  MLX's `default_max_tokens`) are provider-constructor state, NOT `generate`
+  parameters. `schema` is a Pydantic *class* (Ollama derives the dict via
+  `model_json_schema()`; outlines needs the class as `output_type`); callers
+  still parse `response.text` themselves. Add a new backend (e.g. a future
+  `LiteLLMProvider` for remote APIs) as a new `LLMProvider` subclass — never by
+  editing `segmentation/`.
+- **MLX specifics**: mlx-lm has no constrained decoding — `MLXProvider` uses
+  **outlines** (`outlines.from_mlxlm`) for schema-enforced JSON. outlines drops
+  mlx-lm's per-call metrics, so token counts are re-derived via the tokenizer
+  and only wall-clock generation time is reported. The model loads once per
+  model id (`lru_cache`) and stays in unified memory (no `keep_alive` concept);
+  there is no `num_ctx` equivalent (full prompt is always prefilled — do NOT
+  use `max_kv_size`, a rotating cache would silently drop early pages).
+  mlx/outlines imports are function-level so `llm` stays importable off-Mac.
+- The **full-context** strategy sends one compact *fingerprint* per page (not
+  the full text); when running it on Ollama the provider **must** be built with
+  `num_ctx` (e.g. 131072) — Ollama's default (~2–4K) silently truncates the
+  prompt. The model's segment list is never trusted directly: a deterministic
+  repair step guarantees gap-/overlap-free coverage of every page regardless of
+  model output.
 
 ## Known gaps / WIP
 
-- `labeling.py` imports `Segment` and `LabeledSegment` from `datatypes.py`, but
-  those types do **not exist** there yet — stage 3's data contract is unfinished.
-  `labeling.py` is still a bodyless stub.
+- Stage 3's data contract exists (`EnrichedSegment` inherits `DocumentSegment`
+  and adds `title`/`summary`/keyword-based `relevance`; build via
+  `EnrichedSegment.from_segment` to preserve the `segment_id`), but
+  `labeling.py` is still a bodyless stub (`enrich_segments`). The module may be
+  renamed `enrichment.py` once implemented.
 - Stage 2 strategies are LLM-based and **unbenchmarked against ground truth** —
   the marked test PDF (`tests/assets/LR_32 F 245_24_markiert.pdf`) is the
   intended ground truth; boundary precision/recall per strategy is still TODO.

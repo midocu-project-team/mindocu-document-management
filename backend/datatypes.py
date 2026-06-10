@@ -110,6 +110,68 @@ class SegmentationResult(BaseModel):
     errors: list[SegmentationError]  # Stage-2 errors (not page-bound)
 
 
+####################################
+
+
+###################################
+# Task 3: Output as EnrichmentResult
+###################################
+
+
+class EnrichmentErrorType(enum.StrEnum):
+    LLM_CALL_FAILED = "llm_call_failed"  # title/summary generation raised
+    INVALID_OUTPUT = "invalid_output"  # model response unparseable / unusable
+    TIMEOUT = "timeout"
+    UNKNOWN = "unknown"
+
+
+class EnrichmentError(BaseModel):
+    error_type: EnrichmentErrorType
+    message: str
+    # Optional scope: None => the whole document, otherwise the affected segment.
+    segment_id: str | None = None
+
+
+class EnrichedSegment(DocumentSegment):
+    """A DocumentSegment enriched with stage-3 metadata.
+
+    Inherits all stage-2 fields unchanged; `confidence` remains the
+    *boundary* confidence from segmentation, not an enrichment confidence.
+    """
+
+    title: str | None  # Short document title (LLM-generated); None if generation failed
+    summary: str | None  # AI summary of the segment (LLM-generated); None if generation failed
+
+    relevance: bool  # Keyword-based decision, deterministic
+    matched_keywords: list[str]  # Keywords that fired (empty <=> relevance is False)
+
+    @classmethod
+    def from_segment(
+        cls,
+        segment: DocumentSegment,
+        *,
+        title: str | None,
+        summary: str | None,
+        relevance: bool,
+        matched_keywords: list[str],
+    ) -> "EnrichedSegment":
+        """Build an EnrichedSegment from an existing segment, preserving its segment_id."""
+        return cls(
+            **segment.model_dump(),
+            title=title,
+            summary=summary,
+            relevance=relevance,
+            matched_keywords=matched_keywords,
+        )
+
+
+class EnrichmentResult(BaseModel):
+    document_id: str  # Same ID as in CaseFileDocument
+    segments: list[EnrichedSegment]  # All segments from stage 2, enriched with metadata
+    enriched_at: datetime = Field(default_factory=datetime.now)
+    enrichment_method: str  # e.g., "llm+keyword"
+    relevance_keywords: list[str]  # Keyword set used for the relevance decision
+    errors: list[EnrichmentError]  # Stage-3 errors (segment-scoped or global)
 
 
 ####################################
