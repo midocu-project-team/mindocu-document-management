@@ -8,8 +8,8 @@ from datatypes import (
     CaseFileDocument,
     DocumentSegment,
     PageContent,
-    PageExtractionError,
-    PageExtractionErrorType,
+    SegmentationError,
+    SegmentationErrorType,
     SegmentationResult,
     SimilarityResult,
 )
@@ -60,7 +60,9 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
         """Splits a case file into per-document segments."""
         start_time = time.perf_counter()
         pages = doc.pages
-        errors = list(doc.errors)
+        # Stage-1 read errors stay on the CaseFileDocument (linked via
+        # document_id); SegmentationResult.errors holds only stage-2 errors.
+        errors: list[SegmentationError] = []
 
         if len(pages) == 0:
             segments: list[DocumentSegment] = []
@@ -68,12 +70,14 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
             segments = [make_segment([pages[0]], [])]
         else:
             decisions = self._decide_boundaries(pages)
-            # Record failed calls so they are not silently swallowed.
+            # Record failed calls so they are not silently swallowed. The scope
+            # is the boundary between the two pages the failed pair covered.
             errors.extend(
-                PageExtractionError(
-                    page_number=pages[dec.index + 1].page_number,
-                    error_type=PageExtractionErrorType.UNKNOWN,
+                SegmentationError(
+                    error_type=SegmentationErrorType.LLM_CALL_FAILED,
                     message=dec.error or "similarity decision failed",
+                    start_page=pages[dec.index].page_number,
+                    end_page=pages[dec.index + 1].page_number,
                 )
                 for dec in decisions
                 if dec.result is None

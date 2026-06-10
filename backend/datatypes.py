@@ -86,12 +86,28 @@ class DocumentSegment(BaseModel):
     confidence: float | None  # How certain the model is for the boundary
 
 
+class SegmentationErrorType(enum.StrEnum):
+    LLM_CALL_FAILED = "llm_call_failed"  # the model call raised
+    INVALID_OUTPUT = "invalid_output"  # plan unparseable / unusable
+    TIMEOUT = "timeout"
+    UNKNOWN = "unknown"
+
+
+class SegmentationError(BaseModel):
+    error_type: SegmentationErrorType
+    message: str
+    # Optional scope. Both None => the whole document. A range => e.g. a failed
+    # window or the boundary between two pages. Not page-bound like stage 1.
+    start_page: int | None = None
+    end_page: int | None = None
+
+
 class SegmentationResult(BaseModel):
     document_id: str  # Same ID as in CaseFileDocument
     segments: list[DocumentSegment]
     segmented_at: datetime = Field(default_factory=datetime.now)
     segmentation_method: str  # e.g., "llm", "rule-based", "hybrid"
-    errors: list[PageExtractionError]  # Pages with extraction errors
+    errors: list[SegmentationError]  # Stage-2 errors (not page-bound)
 
 
 class SimilarityResult(BaseModel):

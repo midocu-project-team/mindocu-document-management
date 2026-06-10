@@ -8,8 +8,8 @@ from datatypes import (
     CaseFileDocument,
     DocumentSegment,
     PageContent,
-    PageExtractionError,
-    PageExtractionErrorType,
+    SegmentationError,
+    SegmentationErrorType,
     SegmentationResult,
 )
 from logging_config import get_logger
@@ -92,7 +92,9 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
         """Splits a case file into per-document segments in a single pass."""
         start_time = time.perf_counter()
         pages = doc.pages
-        errors = list(doc.errors)
+        # Stage-1 read errors stay on the CaseFileDocument (linked via
+        # document_id); SegmentationResult.errors holds only stage-2 errors.
+        errors: list[SegmentationError] = []
 
         if len(pages) == 0:
             segments: list[DocumentSegment] = []
@@ -114,7 +116,7 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
 
     def _plan_segments(
         self, pages: list[PageContent]
-    ) -> tuple[list[_LLMSegment], list[PageExtractionError]]:
+    ) -> tuple[list[_LLMSegment], list[SegmentationError]]:
         """Returns the raw (unrepaired) LLM segments plus any call errors.
 
         Single-shot when the compact payload fits the budget; otherwise the
@@ -130,10 +132,10 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
                 return list(plan.segments), []
             except Exception as exc:  # noqa: BLE001 - degrade instead of aborting
                 logger.exception("Full-context segmentation call failed")
+                # No scope: the failure concerns the whole-document call.
                 return [], [
-                    PageExtractionError(
-                        page_number=pages[0].page_number,
-                        error_type=PageExtractionErrorType.UNKNOWN,
+                    SegmentationError(
+                        error_type=SegmentationErrorType.LLM_CALL_FAILED,
                         message=f"full-context segmentation failed: {exc}",
                     )
                 ]
@@ -149,7 +151,7 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
 
     def _plan_windowed(
         self, pages: list[PageContent]
-    ) -> tuple[list[_LLMSegment], list[PageExtractionError]]:
+    ) -> tuple[list[_LLMSegment], list[SegmentationError]]:
         """Large-document fallback: per-window plans stitched into boundaries.
 
         Each window is segmented independently; a page that any window reports as
@@ -158,24 +160,27 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
         turned into contiguous segments. Confidence is dropped here (it is not
         meaningful across stitched windows); _repair_segments fills None.
         """
-        errors: list[PageExtractionError] = []
+        errors: list[SegmentationError] = []
         boundary_pages: set[int] = set()
 
         for window in _windows(
             pages, self.options.window_pages, self.options.window_overlap
         ):
             window_start = window[0].page_number
+            window_end = window[-1].page_number
             try:
                 plan = self._call_llm(_document_payload(window, self.options))
             except Exception as exc:  # noqa: BLE001 - one window must not abort all
                 logger.exception(
                     "Windowed segmentation call failed at page %d", window_start
                 )
+                # Scope is the failed window's page range.
                 errors.append(
-                    PageExtractionError(
-                        page_number=window_start,
-                        error_type=PageExtractionErrorType.UNKNOWN,
+                    SegmentationError(
+                        error_type=SegmentationErrorType.LLM_CALL_FAILED,
                         message=f"windowed segmentation failed: {exc}",
+                        start_page=window_start,
+                        end_page=window_end,
                     )
                 )
                 continue
