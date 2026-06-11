@@ -118,6 +118,24 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
     gridTemplateColumns: `${leftSidebarOpen ? '284px' : '0px'} minmax(0, 1fr) ${rightSidebarOpen ? '380px' : '0px'}`,
   } as const
 
+  const toggleShowRelevant = () => {
+    setShowRelevantSegments((current) => {
+      if (current && !showIrrelevantSegments) {
+        return true 
+      }
+      return !current
+    })
+  }
+  
+  const toggleShowIrrelevant = () => {
+    setShowIrrelevantSegments((current) => {
+      if (current && !showRelevantSegments) {
+        return true
+      }
+      return !current
+    })
+  }
+
   return (
     <div className="mindocu-app-shell">
       <WorkspaceSidebar />
@@ -141,8 +159,8 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
               onSelectSegment={handleSelectSegment}
               showRelevantSegments={showRelevantSegments}
               showIrrelevantSegments={showIrrelevantSegments}
-              onToggleShowRelevantSegments={() => setShowRelevantSegments((value) => !value)}
-              onToggleShowIrrelevantSegments={() => setShowIrrelevantSegments((value) => !value)}
+              onToggleShowRelevantSegments={toggleShowRelevant}
+              onToggleShowIrrelevantSegments={toggleShowIrrelevant}
               onToggleSelectedSegmentRelevance={handleToggleSelectedSegmentRelevance}
               query={searchQuery}
               onQueryChange={setSearchQuery}
