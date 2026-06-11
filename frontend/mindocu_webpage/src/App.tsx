@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css'
-import './components/workspace.css'
-import { DocumentWorkspace } from './components/DocumentWorkspace'
+import './components/workspace/workspace.css'
+import { DocumentWorkspace } from './components/workspace/DocumentWorkspace'
 // Simple landing kept inline to restore the original start screen
 import MainLayout from './layouts/MainLayout'
 import CaseHomePage from './pages/CaseHomePage'

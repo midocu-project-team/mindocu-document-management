@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, IconButton, Typography } from '@mui/material';
-import GenericHeader from '../GenericHeader';
+import GenericHeader from '../workspace/GenericHeader';
 import { Grid } from '@mui/material';
 import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
