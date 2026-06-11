@@ -12,7 +12,11 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from evaluation.harness import SegmentationEvaluation, SegmentationPrediction
+from evaluation.harness import (
+    EnrichmentPrediction,
+    SegmentationEvaluation,
+    SegmentationPrediction,
+)
 from evaluation.metrics import ReaderQuality
 
 
@@ -107,10 +111,54 @@ def render_segments_table(
     return table
 
 
+def render_enrichment_table(rows: list[EnrichmentPrediction]) -> Table:
+    """Summary per (enrichment run, PDF): relevance split, speed and cost."""
+    table = Table(title="Enrichment (unscored)")
+    for col in (
+        "strategy", "PDF", "segments src", "segs", "irrelevant",
+        "wall s", "calls", "tokens", "err",
+    ):
+        table.add_column(col)
+    for r in rows:
+        table.add_row(
+            r.strategy_name,
+            r.pdf_name,
+            r.segments_source,
+            str(r.n_segments),
+            str(r.n_irrelevant),
+            f"{r.wall_seconds:.1f}",
+            str(r.usage.calls),
+            str(r.usage.prompt_tokens + r.usage.completion_tokens),
+            str(r.errors),
+        )
+    return table
+
+
+def render_enriched_segments_table(rows: list[EnrichmentPrediction]) -> Table:
+    """Per-segment detail: relevance, fired keywords, title and summary."""
+    table = Table(title="Enriched segments (detail)")
+    for col in ("strategy", "PDF", "#", "pages", "rel", "keywords", "title", "summary"):
+        table.add_column(col)
+    for r in rows:
+        for index, seg in enumerate(r.segments, start=1):
+            table.add_row(
+                r.strategy_name,
+                r.pdf_name,
+                str(index),
+                f"{seg.start_page}-{seg.end_page}",
+                _fmt_match(seg.relevance),
+                ", ".join(seg.matched_keywords) or "-",
+                seg.title or "-",
+                _shorten(seg.summary),
+            )
+    return table
+
+
 def print_report(
     reader_rows: list[tuple[str, ReaderQuality]],
     segmentation_rows: list[SegmentationEvaluation],
     prediction_rows: list[SegmentationPrediction] | None = None,
+    enrichment_rows: list[EnrichmentPrediction] | None = None,
     *,
     show_segments: bool = False,
     console: Console | None = None,
@@ -118,6 +166,7 @@ def print_report(
     """Prints all requested tables to the console."""
     console = console or Console()
     prediction_rows = prediction_rows or []
+    enrichment_rows = enrichment_rows or []
     if reader_rows:
         console.print(render_reader_table(reader_rows))
     if segmentation_rows:
@@ -126,12 +175,17 @@ def print_report(
         console.print(render_prediction_table(prediction_rows))
     if show_segments and (segmentation_rows or prediction_rows):
         console.print(render_segments_table([*segmentation_rows, *prediction_rows]))
+    if enrichment_rows:
+        # Unscored by design: the per-segment detail IS the deliverable.
+        console.print(render_enrichment_table(enrichment_rows))
+        console.print(render_enriched_segments_table(enrichment_rows))
 
 
 def dump_json(
     reader_rows: list[tuple[str, ReaderQuality]],
     segmentation_rows: list[SegmentationEvaluation],
     prediction_rows: list[SegmentationPrediction],
+    enrichment_rows: list[EnrichmentPrediction],
     path: Path,
 ) -> None:
     """Writes a machine-readable record of one evaluation run."""
@@ -139,6 +193,7 @@ def dump_json(
         "reader": {name: asdict(q) for name, q in reader_rows},
         "segmentation": [asdict(r) for r in segmentation_rows],
         "predictions": [asdict(r) for r in prediction_rows],
+        "enrichment": [asdict(r) for r in enrichment_rows],
     }
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -154,7 +209,17 @@ def _fmt_opt(value: float | None) -> str:
 
 
 def _fmt_match(value: bool | None) -> str:
-    """Formats an exact-match flag; '-' when there was no ground truth."""
+    """Formats a boolean flag (exact match / relevance); '-' when unknown."""
     if value is None:
         return "-"
     return "[green]✓[/green]" if value else "[red]✗[/red]"
+
+
+def _shorten(text: str | None, limit: int = 80) -> str:
+    """First ``limit`` characters of an optional text; '-' when unset.
+
+    The console table stays readable this way; the JSON dump keeps the full text.
+    """
+    if not text:
+        return "-"
+    return text if len(text) <= limit else text[: limit - 1] + "…"

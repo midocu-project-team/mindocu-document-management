@@ -11,7 +11,7 @@ module only wires the validated config into them.
 
 from pathlib import Path
 
-from datatypes import CaseFileDocument
+from datatypes import CaseFileDocument, SegmentationResult
 from logging_config import get_logger
 
 from evaluation.config import EvaluationConfig, load_config
@@ -22,11 +22,15 @@ from evaluation.ground_truth import (
     make_template,
 )
 from evaluation.harness import (
+    EnrichmentPrediction,
     SegmentationEvaluation,
     SegmentationPrediction,
     evaluate_segmentation,
     load_cached_document,
+    load_cached_segmentation,
+    predict_enrichment,
     predict_segmentation,
+    truth_segmentation,
 )
 from evaluation.metrics import ReaderQuality, reader_quality
 from evaluation.report import dump_json, print_report
@@ -55,15 +59,26 @@ def main(argv: list[str]) -> None:
     }
     reader_rows = _reader_rows(config, docs)
     segmentation_rows, prediction_rows = _segmentation_outputs(config, docs)
+    enrichment_rows = _enrichment_rows(config, docs)
 
     # predict_only without the segment list would show nothing worth checking.
     show_segments = config.segmentation.show_segments or config.segmentation.predict_only
     print_report(
-        reader_rows, segmentation_rows, prediction_rows, show_segments=show_segments
+        reader_rows,
+        segmentation_rows,
+        prediction_rows,
+        enrichment_rows,
+        show_segments=show_segments,
     )
     if config.output_json is not None:
         config.output_json.parent.mkdir(parents=True, exist_ok=True)
-        dump_json(reader_rows, segmentation_rows, prediction_rows, config.output_json)
+        dump_json(
+            reader_rows,
+            segmentation_rows,
+            prediction_rows,
+            enrichment_rows,
+            config.output_json,
+        )
         logger.info("Wrote JSON report to %s", config.output_json)
 
 
@@ -132,6 +147,64 @@ def _prediction_rows(
                 )
             )
     return rows
+
+
+def _enrichment_rows(
+    config: EvaluationConfig, docs: dict[str, CaseFileDocument]
+) -> list[EnrichmentPrediction]:
+    """Runs every enrichment run on every PDF's segments (unscored)."""
+    if not config.enrichment.enabled or not config.enrichment.runs:
+        return []
+    sources = _enrichment_segmentations(config, docs)
+    rows: list[EnrichmentPrediction] = []
+    for run in config.enrichment.runs:
+        # One provider per run, reused across PDFs (see _segmentation_rows).
+        provider = run.provider.build()
+        for pdf, (segmentation, source) in sources.items():
+            logger.info("Enriching %s segments of %s with %s", source, pdf, run.display_name)
+            rows.append(
+                predict_enrichment(
+                    strategy_name=run.display_name,
+                    factory=run.build_strategy,
+                    segmentation=segmentation,
+                    segments_source=source,
+                    pdf_name=pdf,
+                    provider=provider,
+                )
+            )
+    return rows
+
+
+def _enrichment_segmentations(
+    config: EvaluationConfig, docs: dict[str, CaseFileDocument]
+) -> dict[str, tuple[SegmentationResult, str]]:
+    """The stage-2 input per PDF: the cached precursor run, or the ground truth.
+
+    With no precursor configured, PDFs without a filled-in ground truth are
+    skipped (with a template written), mirroring the segmentation scoring.
+    """
+    precursor = config.enrichment.segmentation
+    if precursor is None:
+        truths = _usable_truths(config.truth_dir, docs)
+        return {
+            pdf: (truth_segmentation(docs[pdf], truth), "ground-truth")
+            for pdf, truth in truths.items()
+        }
+    provider = precursor.provider.build()
+    return {
+        pdf: (
+            load_cached_segmentation(
+                pdf,
+                doc,
+                factory=precursor.build_strategy,
+                provider=provider,
+                cache_dir=config.cache_dir,
+                refresh=config.enrichment.refresh_segments,
+            ),
+            precursor.display_name,
+        )
+        for pdf, doc in docs.items()
+    }
 
 
 def _usable_truths(

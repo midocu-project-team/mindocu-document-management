@@ -169,9 +169,9 @@ class EnrichmentConfig(BaseModel):
     """The ``enrichment:`` section — stage-2 precursor + enrichment runs.
 
     Enrichment consumes a SegmentationResult, so the section selects the
-    stage-2 run that produces the segments; ``segmentation: null`` is reserved
-    for "enrich the ground-truth segments" once enrichment evaluation is
-    implemented. The runner does not execute this section yet.
+    stage-2 run that produces the segments (cached read-once per PDF);
+    ``segmentation: null`` means "enrich the ground-truth segments" instead.
+    The runs are executed unscored — there is no enrichment ground truth yet.
     """
 
     model_config = ConfigDict(extra="forbid")

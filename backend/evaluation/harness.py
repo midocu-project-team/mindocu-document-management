@@ -12,9 +12,19 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from datatypes import CaseFileDocument, DocumentSegment, SegmentationResult
+from datatypes import (
+    CaseFileDocument,
+    DocumentSegment,
+    EnrichedSegment,
+    SegmentationResult,
+)
 from llm import LLMProvider
-from pipeline import SegmentationStrategy, make_segment, read_document
+from pipeline import (
+    EnrichmentStrategy,
+    SegmentationStrategy,
+    make_segment,
+    read_document,
+)
 
 from evaluation import metrics
 from evaluation.ground_truth import GroundTruth
@@ -27,6 +37,7 @@ TRUTH_DIR = _TESTS_DIR / "truth"  # <stem>.truth.json ground truths
 
 # A strategy is built per run so it binds to the metered provider.
 StrategyFactory = Callable[[LLMProvider], SegmentationStrategy]
+EnrichmentStrategyFactory = Callable[[LLMProvider], EnrichmentStrategy]
 
 
 @dataclass(frozen=True)
@@ -67,6 +78,33 @@ class SegmentationEvaluation:
     tolerant_boundary: metrics.BoundaryScore
     exact_segment_matches: int
     segments: list[PredictedSegment]
+    usage: LLMUsage
+    errors: int
+
+
+@dataclass(frozen=True)
+class EnrichedSegmentRow:
+    """One enriched segment, reduced to what manual inspection needs."""
+
+    start_page: int
+    end_page: int
+    relevance: bool
+    matched_keywords: list[str]
+    title: str | None
+    summary: str | None
+
+
+@dataclass(frozen=True)
+class EnrichmentPrediction:
+    """One unscored (enrichment run, PDF) result, for eyeballing the output."""
+
+    strategy_name: str
+    pdf_name: str
+    segments_source: str  # precursor display name or "ground-truth"
+    n_segments: int
+    n_irrelevant: int
+    segments: list[EnrichedSegmentRow]
+    wall_seconds: float
     usage: LLMUsage
     errors: int
 
@@ -217,9 +255,55 @@ def predict_segmentation(
     )
 
 
+def predict_enrichment(
+    *,
+    strategy_name: str,
+    factory: EnrichmentStrategyFactory,
+    segmentation: SegmentationResult,
+    segments_source: str,
+    pdf_name: str,
+    provider: LLMProvider,
+) -> EnrichmentPrediction:
+    """Runs an enrichment strategy without scoring and returns the raw output.
+
+    The stage-3 sibling of ``predict_segmentation``: there is no enrichment
+    ground truth yet, so the result is reduced to rows for manual inspection.
+    """
+    metered = MeteredProvider(provider)
+    strategy = factory(metered)
+
+    started = time.perf_counter()
+    result = strategy.enrich_segments(segmentation)
+    wall_seconds = time.perf_counter() - started
+
+    return EnrichmentPrediction(
+        strategy_name=strategy_name,
+        pdf_name=pdf_name,
+        segments_source=segments_source,
+        n_segments=len(result.segments),
+        n_irrelevant=sum(1 for s in result.segments if not s.relevance),
+        segments=[_enriched_row(s) for s in result.segments],
+        wall_seconds=wall_seconds,
+        usage=metered.usage,
+        errors=len(result.errors),
+    )
+
+
 # ============================================================================
 #  Pure helpers (no harness state)
 # ============================================================================
+
+
+def _enriched_row(segment: EnrichedSegment) -> EnrichedSegmentRow:
+    """Reduces one enriched segment to its inspectable row."""
+    return EnrichedSegmentRow(
+        start_page=segment.start_page,
+        end_page=segment.end_page,
+        relevance=segment.relevance,
+        matched_keywords=list(segment.matched_keywords),
+        title=segment.title,
+        summary=segment.summary,
+    )
 
 
 def _predicted_segments(

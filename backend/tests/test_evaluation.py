@@ -1,9 +1,13 @@
 """Unit tests for the evaluation harness's stage-3 plumbing.
 
-These cover the segments source for enrichment: the ground-truth →
-SegmentationResult conversion and the read-once segmentation cache. No OCR
-and no LLM anywhere.
+These cover the segments source for enrichment (the ground-truth →
+SegmentationResult conversion and the read-once segmentation cache) and the
+unscored enrichment prediction. No OCR and no real LLM anywhere.
 """
+
+import json
+
+from pydantic import BaseModel
 
 from datatypes import (
     BlockType,
@@ -13,7 +17,13 @@ from datatypes import (
     SegmentationResult,
 )
 from evaluation.ground_truth import GroundTruth, TrueSegment
-from evaluation.harness import load_cached_segmentation, truth_segmentation
+from evaluation.harness import (
+    load_cached_segmentation,
+    predict_enrichment,
+    truth_segmentation,
+)
+from llm import LLMProvider, LLMResponse
+from pipeline import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
 
 
 # --------------------------------------------------------------------------
@@ -21,12 +31,16 @@ from evaluation.harness import load_cached_segmentation, truth_segmentation
 # --------------------------------------------------------------------------
 
 
-def make_page(page_number: int) -> PageContent:
-    text = f"Seite {page_number}"
+def make_page(
+    page_number: int,
+    text: str | None = None,
+    block_type: BlockType = BlockType.PARAGRAPH,
+) -> PageContent:
+    text = text if text is not None else f"Seite {page_number}"
     return PageContent(
         page_number=page_number,
         raw_text=text,
-        blocks=[ContentBlock(text=text, block_type=BlockType.PARAGRAPH, bbox=None)],
+        blocks=[ContentBlock(text=text, block_type=block_type, bbox=None)],
         was_ocr_applied=False,
         confidence=None,
         width_pt=595.0,
@@ -34,15 +48,40 @@ def make_page(page_number: int) -> PageContent:
     )
 
 
-def make_doc(n_pages: int) -> CaseFileDocument:
+def make_doc(pages: list[PageContent]) -> CaseFileDocument:
     return CaseFileDocument(
         file_name="x.pdf",
         file_size_bytes=1,
-        total_pages=n_pages,
-        pages=[make_page(n) for n in range(1, n_pages + 1)],
+        total_pages=len(pages),
+        pages=pages,
         errors=[],
         ocr_engine="none",
     )
+
+
+class FakeProvider(LLMProvider):
+    """Returns a canned title/summary JSON and records every prompt."""
+
+    def __init__(self):
+        self.prompts: list[str] = []
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        schema: type[BaseModel] | None = None,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> LLMResponse:
+        self.prompts.append(prompt)
+        return LLMResponse(
+            text=json.dumps(
+                {"title": "Titel", "summary": "Zusammenfassung."}, ensure_ascii=False
+            ),
+            prompt_tokens=10,
+            completion_tokens=5,
+        )
 
 
 class StubStrategy:
@@ -63,7 +102,7 @@ class StubStrategy:
 
 
 def test_truth_segmentation_builds_true_segments():
-    doc = make_doc(4)
+    doc = make_doc([make_page(n) for n in range(1, 5)])
     truth = GroundTruth(
         file_name="x.pdf",
         total_pages=4,
@@ -89,7 +128,7 @@ def test_truth_segmentation_builds_true_segments():
 
 
 def test_load_cached_segmentation_segments_once_then_reads_cache(tmp_path):
-    doc = make_doc(2)
+    doc = make_doc([make_page(1), make_page(2)])
     stub = StubStrategy(
         SegmentationResult(
             document_id=doc.document_id,
@@ -112,7 +151,7 @@ def test_load_cached_segmentation_segments_once_then_reads_cache(tmp_path):
 
 
 def test_load_cached_segmentation_refresh_forces_resegmentation(tmp_path):
-    doc = make_doc(2)
+    doc = make_doc([make_page(1), make_page(2)])
     stub = StubStrategy(
         SegmentationResult(
             document_id=doc.document_id,
@@ -131,3 +170,44 @@ def test_load_cached_segmentation_refresh_forces_resegmentation(tmp_path):
     )
 
     assert stub.calls == 2
+
+
+# --------------------------------------------------------------------------
+# predict_enrichment
+# --------------------------------------------------------------------------
+
+
+def test_predict_enrichment_reduces_segments_and_meters_usage():
+    doc = make_doc(
+        [
+            make_page(1, "Anschreiben", BlockType.HEADING),
+            make_page(2, "Signaturprüfprotokoll", BlockType.HEADING),
+        ]
+    )
+    truth = GroundTruth(
+        file_name="x.pdf",
+        total_pages=2,
+        segments=[
+            TrueSegment(start_page=1, end_page=1),
+            TrueSegment(start_page=2, end_page=2),
+        ],
+    )
+    keywords = RelevanceKeywords(irrelevant=["signaturprüfprotokoll"])
+
+    row = predict_enrichment(
+        strategy_name="kw",
+        factory=lambda p: KeywordRelevanceEnrichmentStrategy(p, keywords),
+        segmentation=truth_segmentation(doc, truth),
+        segments_source="ground-truth",
+        pdf_name="x.pdf",
+        provider=FakeProvider(),
+    )
+
+    assert (row.n_segments, row.n_irrelevant, row.errors) == (2, 1, 0)
+    assert row.segments[0].relevance is True
+    assert row.segments[0].title == "Titel"
+    assert row.segments[1].relevance is False
+    assert row.segments[1].title is None
+    assert row.segments[1].matched_keywords == ["signaturprüfprotokoll"]
+    assert row.usage.calls == 1  # the junk segment cost no LLM call
+    assert row.usage.prompt_tokens == 10
