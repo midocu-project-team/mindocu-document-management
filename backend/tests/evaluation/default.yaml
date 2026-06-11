@@ -14,7 +14,11 @@ output_json: results/latest.json # optional; omit to skip the JSON dump
 
 reader:
   enabled: true
-  refresh_cache: false # true = ignore <stem>.cached.json and re-OCR the PDF
+  refresh_cache: false # true = ignore <stem>.cached.json and re-OCR the PDF (set after changing the strategy/options below)
+  strategy: docling # the only reader backend so far
+  # options:
+  #   ocr_engine: rapidocr # default: tesseract; rapidocr restores was_ocr_applied but is much slower
+  #   ocr_languages: [deu, eng] # tesseract-only
 
 segmentation:
   enabled: true

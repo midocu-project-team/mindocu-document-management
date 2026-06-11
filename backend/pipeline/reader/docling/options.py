@@ -1,6 +1,9 @@
 import os
+from typing import Literal
 
 from docling.datamodel.pipeline_options import (
+    OcrOptions,
+    RapidOcrOptions,
     TableFormerMode,
     TesseractCliOcrOptions,
     ThreadedPdfPipelineOptions,
@@ -9,6 +12,8 @@ from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.document_converter import PdfFormatOption
 from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfPipeline
+
+type OcrEngine = Literal["tesseract", "rapidocr"]
 
 
 # Apple Silicon (MPS) does not support float64, which is required by the RT-DETR-Layout model.
@@ -35,22 +40,43 @@ def _default_pipeline_options() -> ThreadedPdfPipelineOptions:
 
     pipeline_options.table_structure_options.mode = TableFormerMode.FAST
 
-    # Tesseract CLI (German + English): ~60x faster than the RapidOCR default on
-    # CPU at comparable quality. Trade-off: the Tesseract CLI does not report
-    # per-cell OCR confidence, so the confidence report's ocr_score stays NaN and
-    # PageContent.was_ocr_applied can no longer be derived (see _was_ocr_applied).
-    pipeline_options.ocr_options = TesseractCliOcrOptions(lang=["deu", "eng"])
-
     return pipeline_options
 
 
-def default_pdf_format_options() -> PdfFormatOption:
-    # Wires the default (threaded, CPU, Tesseract) pipeline options to the
-    # threaded pipeline and the pypdfium backend. Callers that want to experiment
-    # with a different OCR engine, pipeline class or backend can build their own
-    # PdfFormatOption and pass it to read_document / ocr_convert_pdf instead.
+def default_pdf_format_options(
+    ocr_engine: OcrEngine = "tesseract",
+    ocr_languages: list[str] | None = None,
+) -> PdfFormatOption:
+    """The standard reading options (threaded pipeline, CPU), selectable OCR engine.
+
+    The parameters cover the YAML-configurable knobs of the evaluation runs;
+    callers that need more (pipeline class, backend, ...) build their own
+    PdfFormatOption and inject it into DoclingReaderStrategy instead.
+    """
+    pipeline_options = _default_pipeline_options()
+    pipeline_options.ocr_options = _ocr_options(ocr_engine, ocr_languages)
     return PdfFormatOption(
-        pipeline_options=_default_pipeline_options(),
+        pipeline_options=pipeline_options,
         pipeline_cls=ThreadedStandardPdfPipeline,
         backend=PyPdfiumDocumentBackend,
     )
+
+
+def _ocr_options(engine: OcrEngine, languages: list[str] | None) -> OcrOptions:
+    """OCR engine selection; ``languages`` defaults to deu+eng (Tesseract-only).
+
+    Tesseract CLI is the default: ~60x faster than RapidOCR on CPU at
+    comparable quality. Trade-off: it reports no per-cell OCR confidence, so
+    the confidence report's ocr_score stays NaN and
+    PageContent.was_ocr_applied cannot be derived (see _was_ocr_applied);
+    RapidOCR restores that signal.
+    """
+    if engine == "rapidocr":
+        if languages:
+            raise ValueError(
+                "ocr_languages is Tesseract-only (RapidOCR binds languages to its models)"
+            )
+        return RapidOcrOptions()
+    if engine != "tesseract":
+        raise ValueError(f"unknown OCR engine: {engine!r}")
+    return TesseractCliOcrOptions(lang=languages or ["deu", "eng"])

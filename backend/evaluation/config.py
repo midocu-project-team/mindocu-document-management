@@ -1,8 +1,9 @@
 """YAML-driven configuration for evaluation runs.
 
 One YAML file describes one full evaluation run: which test PDFs to score, a
-``reader:`` section for the intrinsic reader metrics, a ``segmentation:``
-section listing the (strategy, provider) combinations to benchmark and an
+``reader:`` section selecting the stage-1 strategy that produces the cached
+documents (plus the intrinsic reader metrics), a ``segmentation:`` section
+listing the (strategy, provider) combinations to benchmark and an
 ``enrichment:`` section that selects the stage-2 run producing the segments
 plus the enrichment runs to execute on them. Pydantic validates the schema
 with ``extra="forbid"`` so a typo in the YAML fails fast with a clear message
@@ -17,18 +18,21 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from llm import LLMProvider, MLXProvider, OllamaProvider
 from pipeline import (
+    DoclingReaderStrategy,
     EnrichmentStrategy,
     FullContextOptions,
     FullContextSegmentationStrategy,
     KeywordRelevanceEnrichmentStrategy,
     KeywordRelevanceOptions,
     PairwiseBoundarySegmentationStrategy,
+    ReaderStrategy,
     RelevanceKeywords,
     SegmentationStrategy,
+    default_pdf_format_options,
 )
 
 from evaluation.harness import ASSETS_DIR, CACHE_DIR, TRUTH_DIR
@@ -145,12 +149,31 @@ class EnrichmentRunConfig(BaseModel):
 
 
 class ReaderConfig(BaseModel):
-    """The ``reader:`` section — intrinsic reader-quality metrics."""
+    """The ``reader:`` section — the stage-1 strategy + intrinsic quality metrics.
+
+    One reader per run (not a benchmark matrix): its output is the document
+    cache every downstream stage consumes. The cache does not record which
+    reader produced it — set ``refresh_cache`` after changing the strategy
+    or its options.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    enabled: bool = True
+    enabled: bool = True  # the intrinsic reader-quality table
     refresh_cache: bool = False  # ignore <stem>.cached.json and OCR again
+    strategy: Literal["docling"] = "docling"
+    # Extra docling knobs (ocr_engine, ocr_languages).
+    options: dict[str, Any] = {}
+
+    @model_validator(mode="after")
+    def _check_strategy_options(self) -> "ReaderConfig":
+        """Fails fast on option keys/values that would only fail mid-run."""
+        _check_docling_reader_options(self.options)
+        return self
+
+    def build_strategy(self) -> ReaderStrategy:
+        """Builds the configured stage-1 reader."""
+        return DoclingReaderStrategy(default_pdf_format_options(**self.options))
 
 
 class SegmentationConfig(BaseModel):
@@ -194,9 +217,11 @@ class EvaluationConfig(BaseModel):
     cache_dir: Path = CACHE_DIR  # <stem>.cached.json read-once caches
     truth_dir: Path = TRUTH_DIR  # <stem>.truth.json ground truths
     output_json: Path | None = None
-    reader: ReaderConfig = ReaderConfig()
-    segmentation: SegmentationConfig = SegmentationConfig()
-    enrichment: EnrichmentConfig = EnrichmentConfig()
+    # default_factory: the section defaults must build lazily (at load time),
+    # after the validator helpers further down this module exist.
+    reader: ReaderConfig = Field(default_factory=ReaderConfig)
+    segmentation: SegmentationConfig = Field(default_factory=SegmentationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
 
 
 def load_config(path: Path) -> EvaluationConfig:
@@ -213,6 +238,20 @@ def load_config(path: Path) -> EvaluationConfig:
 # ============================================================================
 #  Pure helpers (no config state)
 # ============================================================================
+
+
+def _check_docling_reader_options(options: dict[str, Any]) -> None:
+    """Rejects docling reader options that would otherwise only fail mid-run."""
+    unknown = set(options) - {"ocr_engine", "ocr_languages"}
+    if unknown:
+        raise ValueError(f"unknown docling reader options: {sorted(unknown)}")
+    engine = options.get("ocr_engine", "tesseract")
+    if engine not in ("tesseract", "rapidocr"):
+        raise ValueError(f"unknown OCR engine: {engine!r}")
+    if engine == "rapidocr" and options.get("ocr_languages"):
+        raise ValueError(
+            "ocr_languages is Tesseract-only (RapidOCR binds languages to its models)"
+        )
 
 
 def _check_full_context_options(options: dict[str, Any]) -> None:

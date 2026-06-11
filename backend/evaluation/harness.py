@@ -20,8 +20,8 @@ from pipeline.datatypes import (
 )
 from llm import LLMProvider
 from pipeline import (
-    DoclingReaderStrategy,
     EnrichmentStrategy,
+    ReaderStrategy,
     SegmentationStrategy,
     make_segment,
 )
@@ -112,20 +112,22 @@ class EnrichmentPrediction:
 def load_cached_document(
     pdf_name: str,
     *,
+    reader: ReaderStrategy,
     assets_dir: Path = ASSETS_DIR,
     cache_dir: Path = CACHE_DIR,
     refresh: bool = False,
 ) -> CaseFileDocument:
-    """Loads a read case file from cache, OCR'ing once on a cache miss.
+    """Loads a read case file from cache, reading once on a cache miss.
 
-    ``refresh`` forces a re-read (e.g. after reader changes) and rewrites the
-    cache file afterwards.
+    ``refresh`` forces a re-read and rewrites the cache file afterwards; the
+    cache does not record which reader produced it, so set ``refresh`` after
+    changing the reader strategy or its options.
     """
     cache = cache_dir / f"{Path(pdf_name).stem}.cached.json"
     if cache.exists() and not refresh:
         return CaseFileDocument.model_validate_json(cache.read_text())
     pdf_bytes = io.BytesIO((assets_dir / pdf_name).read_bytes())
-    doc = DoclingReaderStrategy().read_document(pdf_bytes, pdf_name)
+    doc = reader.read_document(pdf_bytes, pdf_name)
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(doc.model_dump_json())
     return doc

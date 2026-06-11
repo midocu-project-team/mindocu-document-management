@@ -10,6 +10,8 @@ import math
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from docling_core.types.doc.document import (
     FormItem,
     KeyValueItem,
@@ -29,6 +31,7 @@ from pipeline.reader.docling.mapping import (
     _text_item_to_blocks,
     item_to_blocks,
 )
+from pipeline.reader.docling.options import default_pdf_format_options
 from pipeline.reader.docling.reader import _page_confidence, _was_ocr_applied
 
 
@@ -300,3 +303,27 @@ def test_item_to_blocks_routes_plain_item_to_fallback(monkeypatch):
 
     # A bare object is neither TextItem nor FloatingItem.
     assert item_to_blocks(object(), doc=None) == "FALLBACK"
+
+
+# --------------------------------------------------------------------------
+# default_pdf_format_options (OCR engine selection)
+# --------------------------------------------------------------------------
+
+
+def test_default_pdf_format_options_defaults_to_tesseract_deu_eng():
+    ocr = default_pdf_format_options().pipeline_options.ocr_options
+    assert ocr.kind == "tesseract"
+    assert ocr.lang == ["deu", "eng"]
+
+
+def test_default_pdf_format_options_selects_engine_and_languages():
+    tesseract = default_pdf_format_options(ocr_languages=["deu"])
+    rapid = default_pdf_format_options(ocr_engine="rapidocr")
+
+    assert tesseract.pipeline_options.ocr_options.lang == ["deu"]
+    assert rapid.pipeline_options.ocr_options.kind == "rapidocr"
+
+
+def test_default_pdf_format_options_rejects_unknown_engine():
+    with pytest.raises(ValueError, match="unknown OCR engine"):
+        default_pdf_format_options(ocr_engine="easyocr")

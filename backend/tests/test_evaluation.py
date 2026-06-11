@@ -1,13 +1,15 @@
-"""Unit tests for the evaluation harness's stage-3 plumbing.
+"""Unit tests for the evaluation harness's stage-1/3 plumbing.
 
-These cover the segments source for enrichment (the ground-truth →
-SegmentationResult conversion and the read-once segmentation cache) and the
-unscored enrichment prediction. No OCR and no real LLM anywhere.
+These cover the read-once document cache (with an injected reader), the
+segments source for enrichment (the ground-truth → SegmentationResult
+conversion and the read-once segmentation cache), the unscored enrichment
+prediction and the reader config validation. No OCR and no real LLM anywhere.
 """
 
 import json
 
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 
 from pipeline.datatypes import (
     BlockType,
@@ -16,8 +18,10 @@ from pipeline.datatypes import (
     PageContent,
     SegmentationResult,
 )
+from evaluation.config import ReaderConfig
 from evaluation.ground_truth import GroundTruth, TrueSegment
 from evaluation.harness import (
+    load_cached_document,
     load_cached_segmentation,
     predict_enrichment,
     truth_segmentation,
@@ -94,6 +98,58 @@ class StubStrategy:
     def segment_document(self, doc: CaseFileDocument) -> SegmentationResult:
         self.calls += 1
         return self.result
+
+
+class StubReader:
+    """Counts read_document calls and returns a fixed document."""
+
+    def __init__(self, doc: CaseFileDocument):
+        self.doc = doc
+        self.calls = 0
+
+    def read_document(self, file, file_name=None) -> CaseFileDocument:
+        self.calls += 1
+        return self.doc
+
+
+# --------------------------------------------------------------------------
+# load_cached_document / ReaderConfig
+# --------------------------------------------------------------------------
+
+
+def test_load_cached_document_reads_once_then_uses_cache(tmp_path):
+    reader = StubReader(make_doc([make_page(1)]))
+    (tmp_path / "x.pdf").write_bytes(b"%PDF-stub")
+
+    first = load_cached_document(
+        "x.pdf", reader=reader, assets_dir=tmp_path, cache_dir=tmp_path
+    )
+    second = load_cached_document(
+        "x.pdf", reader=reader, assets_dir=tmp_path, cache_dir=tmp_path
+    )
+
+    assert reader.calls == 1  # the second call was served from the cache
+    assert (tmp_path / "x.cached.json").exists()
+    assert second.document_id == first.document_id
+
+
+def test_reader_config_builds_configured_ocr_engine():
+    config = ReaderConfig(options={"ocr_engine": "rapidocr"})
+
+    strategy = config.build_strategy()
+
+    ocr = strategy._pdf_format_options.pipeline_options.ocr_options
+    assert ocr.kind == "rapidocr"
+
+
+def test_reader_config_rejects_unknown_option_keys():
+    with pytest.raises(ValidationError, match="unknown docling reader options"):
+        ReaderConfig(options={"window_pages": 3})
+
+
+def test_reader_config_rejects_rapidocr_languages():
+    with pytest.raises(ValidationError, match="Tesseract-only"):
+        ReaderConfig(options={"ocr_engine": "rapidocr", "ocr_languages": ["deu"]})
 
 
 # --------------------------------------------------------------------------

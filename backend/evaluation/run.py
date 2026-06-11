@@ -48,9 +48,12 @@ def main(argv: list[str]) -> None:
     config = load_config(config_path)
     logger.info("Evaluation run configured by %s", config_path)
 
+    # One reader for all PDFs, built from the reader: section of the config.
+    reader = config.reader.build_strategy()
     docs = {
         pdf: load_cached_document(
             pdf,
+            reader=reader,
             assets_dir=config.assets_dir,
             cache_dir=config.cache_dir,
             refresh=config.reader.refresh_cache,
