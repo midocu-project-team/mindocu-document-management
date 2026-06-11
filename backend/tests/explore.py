@@ -1,4 +1,4 @@
-from pipeline import ocr_convert_pdf, read_document
+from pipeline import DoclingReaderStrategy, ocr_convert_pdf
 from pathlib import Path
 import io
 import IPython
@@ -12,7 +12,7 @@ with open(PDF_PATH, "rb") as f:
     pdf_bytes = io.BytesIO(f.read())
 
 # Our reading format
-doc = read_document(pdf_bytes, str(PDF_NAME))
+doc = DoclingReaderStrategy().read_document(pdf_bytes, str(PDF_NAME))
 print(doc)
 
 # Docling reading format

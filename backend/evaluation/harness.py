@@ -20,10 +20,10 @@ from pipeline.datatypes import (
 )
 from llm import LLMProvider
 from pipeline import (
+    DoclingReaderStrategy,
     EnrichmentStrategy,
     SegmentationStrategy,
     make_segment,
-    read_document,
 )
 
 from evaluation import metrics
@@ -125,7 +125,7 @@ def load_cached_document(
     if cache.exists() and not refresh:
         return CaseFileDocument.model_validate_json(cache.read_text())
     pdf_bytes = io.BytesIO((assets_dir / pdf_name).read_bytes())
-    doc = read_document(pdf_bytes, pdf_name)
+    doc = DoclingReaderStrategy().read_document(pdf_bytes, pdf_name)
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(doc.model_dump_json())
     return doc

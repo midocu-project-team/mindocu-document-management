@@ -1,3 +1,9 @@
-from .reader import read_document, ocr_convert_pdf
+from .docling import DoclingReaderStrategy, default_pdf_format_options, ocr_convert_pdf
+from .strategy import ReaderStrategy
 
-__all__ = ["read_document", "ocr_convert_pdf"]
+__all__ = [
+    "ReaderStrategy",
+    "DoclingReaderStrategy",
+    "default_pdf_format_options",
+    "ocr_convert_pdf",
+]

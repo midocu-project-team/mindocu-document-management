@@ -1,7 +1,7 @@
 """Public interface of the three-stage mindocu pipeline.
 
 Code outside this package imports pipeline entry points from here
-(``from pipeline import read_document, FullContextSegmentationStrategy``);
+(``from pipeline import DoclingReaderStrategy, FullContextSegmentationStrategy``);
 the per-stage subpackages stay an implementation detail. The data contract
 (``CaseFileDocument``, ``SegmentationResult``, ``EnrichmentResult``, ...)
 lives in ``pipeline.datatypes``.
@@ -13,8 +13,12 @@ from .enrichment import (
     RelevanceKeywords,
 )
 from .enrichment.strategy import EnrichmentStrategy
-from .reader import ocr_convert_pdf, read_document
-from .reader.options import default_pdf_format_options
+from .reader import (
+    DoclingReaderStrategy,
+    ReaderStrategy,
+    default_pdf_format_options,
+    ocr_convert_pdf,
+)
 from .segmentation import (
     FullContextOptions,
     FullContextSegmentationStrategy,
@@ -25,9 +29,10 @@ from .segmentation.utils import make_segment
 
 __all__ = [
     # Stage 1: read
-    "read_document",
-    "ocr_convert_pdf",
+    "ReaderStrategy",
+    "DoclingReaderStrategy",
     "default_pdf_format_options",
+    "ocr_convert_pdf",
     # Stage 2: segment
     "SegmentationStrategy",
     "FullContextOptions",

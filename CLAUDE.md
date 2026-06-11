@@ -16,7 +16,8 @@ The three stages live in the **`pipeline/` package** (`pipeline/reader/`,
 `pipeline/segmentation/`, `pipeline/enrichment/`):
 
 1. **Read** (`pipeline/reader/`) — PDF → `CaseFileDocument`: OCR/parse the PDF
-   into structured, machine-readable pages and blocks. **Implemented.**
+   into structured, machine-readable pages and blocks. **Implemented** as a
+   `ReaderStrategy` package; the docling-based reader is the only backend so far.
 2. **Segment** (`pipeline/segmentation/`) — `CaseFileDocument` →
    `SegmentationResult`: detect document boundaries and group pages into
    `DocumentSegment`s. **Implemented** — a `SegmentationStrategy` package with
@@ -59,12 +60,13 @@ The three stages live in the **`pipeline/` package** (`pipeline/reader/`,
 cd backend
 uv sync                              # create .venv + install locked deps
 uv add <pkg>            / uv add --dev <pkg>      # add deps (never pip install)
-uv run python -m pipeline.reader.reader   # run a module (run from backend/)
+uv run python -m evaluation          # run a module (run from backend/)
 uv run pytest                        # tests
 ```
 
 `backend/` is the import root, so modules are imported without a `backend.`
-prefix: `from datatypes import ...`, `from pipeline import read_document`.
+prefix: `from pipeline.datatypes import ...`, `from pipeline import
+DoclingReaderStrategy`.
 The `pipeline/__init__.py` is the **public interface** of the pipeline: it
 re-exports every entry point meant for use from outside (stage entry points,
 strategy ABCs and classes, option models). Code outside `pipeline/` imports
@@ -76,12 +78,14 @@ imports won't resolve.
 
 | Path | Role |
 | --- | --- |
-| `datatypes.py` | All dataclasses (the pipeline's data contract). No logic. |
+| `pipeline/datatypes.py` | All dataclasses (the pipeline's data contract). No logic. |
 | `pipeline/` | The three pipeline stages; `__init__.py` is the public interface (re-exports all outside-facing entry points). |
-| `pipeline/reader/` | Stage 1: PDF → `CaseFileDocument`. |
-| `pipeline/reader/options.py` | OCR/pipeline config (`_default_pipeline_options`, `default_pdf_format_options`). |
-| `pipeline/reader/reader.py` | Document assembly: `read_document`, `ocr_convert_pdf`. |
-| `pipeline/reader/mapping.py` | DocItem → `ContentBlock` mapping. |
+| `pipeline/reader/` | Stage 1: PDF → `CaseFileDocument` (strategy package). |
+| `pipeline/reader/strategy.py` | `ReaderStrategy` ABC (the `read_document` contract). |
+| `pipeline/reader/docling/` | Strategy: docling-based reader (`DoclingReaderStrategy`). |
+| `pipeline/reader/docling/options.py` | OCR/pipeline config (`_default_pipeline_options`, `default_pdf_format_options`). |
+| `pipeline/reader/docling/reader.py` | Document assembly: `DoclingReaderStrategy`, `ocr_convert_pdf`. |
+| `pipeline/reader/docling/mapping.py` | DocItem → `ContentBlock` mapping. |
 | `pipeline/segmentation/` | Stage 2: `CaseFileDocument` → `SegmentationResult` (strategy package). |
 | `pipeline/segmentation/strategy.py` | `SegmentationStrategy` ABC (the `segment_document` contract). |
 | `pipeline/segmentation/pairwise_boundary/` | Strategy: per-adjacent-pair boundary classification (N−1 LLM calls). |
@@ -98,10 +102,18 @@ imports won't resolve.
 | `logging_config.py` | `get_logger`; used across all stages. |
 | `tests/explore/` | Scratch scripts for trying docling/segmentation features (kept). |
 
-Stage 1 is split into the `pipeline/reader/` package along its natural seams: **options**
-(`options.py`), **document assembly** (`reader.py`, entry point `read_document`),
-and **DocItem → ContentBlock mapping** (`mapping.py`). Mapping helpers are
-module-private; the package `__init__` re-exports the public entry points.
+Stage 1 mirrors stages 2/3 as a **strategy package**: a `ReaderStrategy` ABC
+(`strategy.py`, one `read_document` method) with one subpackage per backend.
+The docling backend (`docling/`) is split along the natural seams of reading:
+**options** (`options.py`), **document assembly** (`reader.py`,
+`DoclingReaderStrategy` + the raw-conversion escape hatch `ocr_convert_pdf`),
+and **DocItem → ContentBlock mapping** (`mapping.py`). Backend configuration
+is constructor state: `DoclingReaderStrategy(pdf_format_options=...)` swaps
+OCR engine, pipeline class or backend (`None` ⇒ the default options). The
+output contract every reader backend must honor — 1-based page numbers,
+bboxes in PDF points with a bottom-left origin — is pinned on `BoundingBox`
+in `pipeline/datatypes.py`. Mapping helpers are module-private; the package
+`__init__` re-exports the public entry points.
 
 Stage 2 is the `pipeline/segmentation/` package built on the **strategy pattern**: a
 `SegmentationStrategy` ABC (`strategy.py`) with one `segment_document` method,
@@ -130,7 +142,7 @@ LLM call by default (`enrich_irrelevant=False`). A failed call degrades only
 that segment (`title`/`summary` = `None` + segment-scoped `EnrichmentError`);
 the deterministic relevance always survives.
 
-## docling knowledge (hard-won; read before touching the `pipeline/reader/` package)
+## docling knowledge (hard-won; read before touching `pipeline/reader/docling/`)
 
 The reader is built on **docling**. These points are non-obvious and were
 verified empirically against the test PDFs:
@@ -159,6 +171,8 @@ verified empirically against the test PDFs:
 - **Bounding boxes** use `CoordOrigin.BOTTOMLEFT` (y grows upward). A
   top-left-origin frontend must flip y via the page height; bboxes are stored
   raw and converted later. `width_pt`/`height_pt` per page are kept for this.
+  This is pinned as the stage-1 contract on `BoundingBox` in
+  `pipeline/datatypes.py` — any non-docling reader backend must emit it too.
 - **Per-page confidence & OCR signal** come from `conversion_result.confidence`
   (a `ConfidenceReport`): `report.pages[n].mean_score` (`NaN` → `None`) and
   `was_ocr_applied = not isnan(report.pages[n].ocr_score)`. The cell-level
@@ -180,17 +194,23 @@ verified empirically against the test PDFs:
   PDFs than docling's RapidOCR (the 124-page test Akte: ~1 min vs ~8 min) at
   comparable quality. Needs the `tesseract` binary + `deu` language data on the
   host (`brew install tesseract tesseract-lang`). Born-digital pages cost ~0.1 s;
-  only true scans are slow. Swappable via `pdf_format_options` (see below).
+  only true scans are slow. Swappable via the `DoclingReaderStrategy`
+  constructor (see below).
 
 ## Architecture notes / decisions
 
-- Stage 1 is the `pipeline/reader/` package (`options.py` / `reader.py` /
-  `mapping.py`), split along the natural seams of reading rather than one flat
-  file.
-- `read_document` / `ocr_convert_pdf` accept an optional `pdf_format_options`
-  (a docling `PdfFormatOption`); `default_pdf_format_options()` builds the default
-  (threaded pipeline, CPU, Tesseract). Pass a custom one to swap OCR engine,
-  pipeline class or backend without touching the reader.
+- Stage 1 is a **strategy package** like stages 2/3: a `ReaderStrategy` ABC
+  plus the `docling/` backend subpackage (`options.py` / `reader.py` /
+  `mapping.py`). Add a new reader backend (e.g. OpenDataLoader) as a new
+  subpackage implementing `ReaderStrategy` — it must honor the bbox/page-number
+  contract pinned in `pipeline/datatypes.py`, never by editing the docling one.
+- `DoclingReaderStrategy` takes an optional `pdf_format_options` (a docling
+  `PdfFormatOption`) as **constructor state** — the same principle as the LLM
+  providers; `default_pdf_format_options()` builds the default (threaded
+  pipeline, CPU, Tesseract). Pass a custom one to swap OCR engine, pipeline
+  class or backend without touching the reading code.
+  `CaseFileDocument.ocr_engine` is derived from the configured options
+  (`kind:langs`, e.g. `tesseract:deu+eng`), not hardcoded.
 - `CaseFileDocument.document_id` auto-generates a UUID via
   `field(default_factory=..., kw_only=True)` — don't pass it manually.
 - Stage 2 is a **strategy package**: add a new approach as a subpackage under

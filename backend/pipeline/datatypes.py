@@ -3,6 +3,9 @@ import enum
 import uuid
 from datetime import datetime
 
+# Stage-1 contract: (x0, y0, x1, y1) in PDF points with a BOTTOM-LEFT origin
+# (y grows upward). Every ReaderStrategy backend must emit this convention;
+# a top-left-origin consumer (e.g. the frontend) flips y via the page height.
 type BoundingBox = tuple[float, float, float, float]
 
 
@@ -30,7 +33,7 @@ class PageExtractionErrorType(enum.StrEnum):
 class ContentBlock(BaseModel):
     text: str
     block_type: BlockType
-    bbox: BoundingBox | None  # x0, y0, x1, y1
+    bbox: BoundingBox | None  # see BoundingBox: PDF points, bottom-left origin
     source_ref: str | None = (
         None  # Common reference ID for grouping related ContentBlocks (e.g., fragments of the same item)
     )
