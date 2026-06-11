@@ -19,7 +19,7 @@ from docling_core.types.doc.document import (
 )
 from docling_core.types.doc.labels import DocItemLabel
 
-from datatypes import BlockType
+from pipeline.datatypes import BlockType
 from pipeline.reader import mapping
 from pipeline.reader.mapping import (
     _fallback_items_to_blocks,

@@ -2,7 +2,7 @@ import time
 
 from pydantic import BaseModel, ValidationError
 
-from datatypes import (
+from pipeline.datatypes import (
     DocumentSegment,
     EnrichedSegment,
     EnrichmentError,

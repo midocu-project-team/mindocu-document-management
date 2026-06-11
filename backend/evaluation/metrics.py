@@ -11,7 +11,7 @@ so they never import a concrete strategy. The reader metric reads a
 from dataclasses import dataclass
 from typing import Protocol
 
-from datatypes import CaseFileDocument
+from pipeline.datatypes import CaseFileDocument
 
 
 class _HasPageRange(Protocol):

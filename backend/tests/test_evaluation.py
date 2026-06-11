@@ -9,7 +9,7 @@ import json
 
 from pydantic import BaseModel
 
-from datatypes import (
+from pipeline.datatypes import (
     BlockType,
     CaseFileDocument,
     ContentBlock,

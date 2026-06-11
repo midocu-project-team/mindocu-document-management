@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from datatypes import EnrichmentResult, SegmentationResult
+from pipeline.datatypes import EnrichmentResult, SegmentationResult
 
 
 class EnrichmentStrategy(ABC):

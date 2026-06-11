@@ -4,7 +4,7 @@ Code outside this package imports pipeline entry points from here
 (``from pipeline import read_document, FullContextSegmentationStrategy``);
 the per-stage subpackages stay an implementation detail. The data contract
 (``CaseFileDocument``, ``SegmentationResult``, ``EnrichmentResult``, ...)
-lives in the top-level ``datatypes`` module, not here.
+lives in ``pipeline.datatypes``.
 """
 
 from .enrichment import (

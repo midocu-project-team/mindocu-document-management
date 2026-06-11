@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from datatypes import CaseFileDocument, SegmentationResult
+from pipeline.datatypes import CaseFileDocument, SegmentationResult
 
 
 class SegmentationStrategy(ABC):

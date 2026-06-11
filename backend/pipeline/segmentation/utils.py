@@ -6,7 +6,7 @@ strategies do not have to cross-import from a sibling strategy package.
 
 from statistics import mean
 
-from datatypes import DocumentSegment, PageContent
+from pipeline.datatypes import DocumentSegment, PageContent
 
 
 def make_segment(

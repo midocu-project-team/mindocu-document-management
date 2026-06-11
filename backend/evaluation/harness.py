@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from datatypes import (
+from pipeline.datatypes import (
     CaseFileDocument,
     DocumentSegment,
     EnrichedSegment,

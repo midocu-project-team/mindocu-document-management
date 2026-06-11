@@ -3,7 +3,7 @@ import time
 
 from pydantic import BaseModel, Field
 
-from datatypes import (
+from pipeline.datatypes import (
     CaseFileDocument,
     DocumentSegment,
     PageContent,

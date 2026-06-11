@@ -11,7 +11,7 @@ module only wires the validated config into them.
 
 from pathlib import Path
 
-from datatypes import CaseFileDocument, SegmentationResult
+from pipeline.datatypes import CaseFileDocument, SegmentationResult
 from logging_config import get_logger
 
 from evaluation.config import EvaluationConfig, load_config

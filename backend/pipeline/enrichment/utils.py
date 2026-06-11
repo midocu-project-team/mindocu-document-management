@@ -8,7 +8,7 @@ unchanged.
 
 from pydantic import BaseModel, Field
 
-from datatypes import BlockType, DocumentSegment
+from pipeline.datatypes import BlockType, DocumentSegment
 
 
 class RelevanceKeywords(BaseModel):

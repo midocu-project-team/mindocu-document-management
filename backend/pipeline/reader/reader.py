@@ -6,7 +6,7 @@ from docling.datamodel.base_models import ConfidenceReport, InputFormat
 from docling.datamodel.document import ConversionResult
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.io import DocumentStream
-from datatypes import (
+from pipeline.datatypes import (
     CaseFileDocument,
     ContentBlock,
     PageContent,
