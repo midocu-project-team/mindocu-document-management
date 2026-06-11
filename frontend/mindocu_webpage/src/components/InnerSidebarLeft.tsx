@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { SearchToolbar } from './SearchToolbar'
 import { SegmentFilterDropdown } from './SegmentFilterDropdown'
+import { isSegmentVisible } from './segmentUtils'
 
 export type Segment = {
   title: string
@@ -56,11 +57,7 @@ export function InnerSidebarLeft({
   const selectedSegment = segments[selectedSegmentIndex] ?? segments[0]
 
   const filteredSegments = segments.filter((segment) => {
-    if (segment.relevant && !showRelevantSegments) {
-      return false
-    }
-
-    if (!segment.relevant && !showIrrelevantSegments) {
+    if (!isSegmentVisible(segment, showRelevantSegments, showIrrelevantSegments)) {
       return false
     }
 

@@ -1,11 +1,16 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { Topbar } from './Topbar'
 import { InnerSidebarLeft } from './InnerSidebarLeft'
 import { InnerSidebarRight } from './InnerSidebarRight'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PdfViewport, type PdfViewportHandle } from './PdfViewport'
-import { findSegmentIndexForPage, parseSegmentStartPage } from './segmentUtils'
+import {
+  findSegmentIndexForPage,
+  getNearestVisiblePage,
+  getVisiblePages,
+  parseSegmentStartPage,
+} from './segmentUtils'
 import { createInitialSegmentsByDocument, DEMO_WORKSPACE_DOCUMENTS } from './workspaceDocuments'
 
 type WorkspaceProps = {
@@ -26,7 +31,7 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const [selectedDocumentId, setSelectedDocumentId] = useState(DEMO_WORKSPACE_DOCUMENTS[0].id)
   const [segmentsByDocument, setSegmentsByDocument] = useState(createInitialSegmentsByDocument)
   const [showRelevantSegments, setShowRelevantSegments] = useState(true)
-  const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(true)
+  const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false)
   const pdfViewportRef = useRef<PdfViewportHandle>(null)
 
   const workspaceDocuments = useMemo(
@@ -43,6 +48,33 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const activeSegments = segmentsByDocument[activeDocument.id] ?? activeDocument.segments
 
   const activeSegment = activeSegments[selectedSegmentIndex] ?? activeSegments[0]
+
+  const visiblePages = useMemo(
+    () =>
+      getVisiblePages(
+        activeSegments,
+        pageCount,
+        showRelevantSegments,
+        showIrrelevantSegments,
+      ),
+    [activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments],
+  )
+
+  useEffect(() => {
+    if (visiblePages.length === 0) {
+      return
+    }
+
+    setCurrentPage((page) => {
+      if (visiblePages.includes(page)) {
+        return page
+      }
+
+      const nearestPage = getNearestVisiblePage(page, visiblePages)
+      pdfViewportRef.current?.goToPage(nearestPage)
+      return nearestPage
+    })
+  }, [visiblePages])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -140,6 +172,7 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
               pdfUrl={activeDocument.pdfUrl}
               currentPage={currentPage}
               pageCount={pageCount}
+              visiblePages={visiblePages}
               zoom={zoom}
               onPageChange={handlePageChange}
               onPageCountChange={setPageCount}
