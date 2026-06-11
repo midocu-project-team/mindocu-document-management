@@ -14,8 +14,7 @@ from pathlib import Path
 
 from datatypes import CaseFileDocument, DocumentSegment
 from llm import LLMProvider
-from reader import read_document
-from segmentation.strategy import SegmentationStrategy
+from pipeline import SegmentationStrategy, read_document
 
 from evaluation import metrics
 from evaluation.ground_truth import GroundTruth

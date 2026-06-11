@@ -13,9 +13,9 @@ from datatypes import (
 )
 from llm import LLMProvider
 from logging_config import get_logger
-from segmentation.full_context.prompt import FULL_CONTEXT_SYSTEM_PROMPT
-from segmentation.strategy import SegmentationStrategy
-from segmentation.utils import make_segment
+from pipeline.segmentation.full_context.prompt import FULL_CONTEXT_SYSTEM_PROMPT
+from pipeline.segmentation.strategy import SegmentationStrategy
+from pipeline.segmentation.utils import make_segment
 
 logger = get_logger(__name__)
 logger.setLevel(level="DEBUG")

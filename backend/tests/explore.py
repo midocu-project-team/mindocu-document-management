@@ -1,4 +1,4 @@
-from reader import ocr_convert_pdf, read_document
+from pipeline import ocr_convert_pdf, read_document
 from pathlib import Path
 import io
 import IPython

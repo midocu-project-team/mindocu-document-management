@@ -12,8 +12,8 @@ from datatypes import (
     PageContent,
     SegmentationResult,
 )
-from enrichment import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
-from enrichment.utils import decide_relevance
+from pipeline import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
+from pipeline.enrichment.utils import decide_relevance
 
 
 # --------------------------------------------------------------------------

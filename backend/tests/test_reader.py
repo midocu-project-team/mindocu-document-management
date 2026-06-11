@@ -20,8 +20,8 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import DocItemLabel
 
 from datatypes import BlockType
-from reader import mapping
-from reader.mapping import (
+from pipeline.reader import mapping
+from pipeline.reader.mapping import (
     _fallback_items_to_blocks,
     _floating_items_to_blocks,
     _floating_text,
@@ -29,7 +29,7 @@ from reader.mapping import (
     _text_item_to_blocks,
     item_to_blocks,
 )
-from reader.reader import _page_confidence, _was_ocr_applied
+from pipeline.reader.reader import _page_confidence, _was_ocr_applied
 
 
 # --------------------------------------------------------------------------

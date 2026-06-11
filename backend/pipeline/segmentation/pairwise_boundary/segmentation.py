@@ -14,9 +14,9 @@ from datatypes import (
 )
 from llm import LLMProvider
 from logging_config import get_logger
-from segmentation.pairwise_boundary.prompt import SIMILARITY_SYSTEM_PROMPT
-from segmentation.strategy import SegmentationStrategy
-from segmentation.utils import make_segment
+from pipeline.segmentation.pairwise_boundary.prompt import SIMILARITY_SYSTEM_PROMPT
+from pipeline.segmentation.strategy import SegmentationStrategy
+from pipeline.segmentation.utils import make_segment
 
 logger = get_logger(__name__)
 logger.setLevel(level="DEBUG")

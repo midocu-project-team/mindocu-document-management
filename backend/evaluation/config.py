@@ -18,12 +18,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from llm import LLMProvider, MLXProvider, OllamaProvider
-from segmentation import (
+from pipeline import (
     FullContextOptions,
     FullContextSegmentationStrategy,
     PairwiseBoundarySegmentationStrategy,
+    SegmentationStrategy,
 )
-from segmentation.strategy import SegmentationStrategy
 
 from evaluation.harness import ASSETS_DIR, CACHE_DIR, TRUTH_DIR
 

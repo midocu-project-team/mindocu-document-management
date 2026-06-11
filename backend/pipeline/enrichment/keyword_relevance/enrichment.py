@@ -4,8 +4,8 @@ from datatypes import (
     EnrichmentResult,
     SegmentationResult,
 )
-from enrichment.strategy import EnrichmentStrategy
-from enrichment.utils import RelevanceKeywords, decide_relevance
+from pipeline.enrichment.strategy import EnrichmentStrategy
+from pipeline.enrichment.utils import RelevanceKeywords, decide_relevance
 from logging_config import get_logger
 
 logger = get_logger(__name__)
