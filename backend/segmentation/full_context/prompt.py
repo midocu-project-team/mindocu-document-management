@@ -2,68 +2,59 @@
 # file ("Akte") is a single PDF in which several distinct documents -- each with
 # its own TYPE/ROLE -- are concatenated. Unlike the pairwise strategy, the model
 # here sees the WHOLE document at once (one compact fingerprint per page) and
-# returns the full list of segments directly.
+# returns the full list of segments directly. The prompt is German on purpose:
+# the case files are German and the boundary cues (letterheads, Aktenzeichen,
+# authority names) are German-language signals.
 
-# Keywords whose appearance in a page heading often marks the start of a new
-# segment. Shared in spirit with the pairwise prompt's signal list.
-TYPICAL_KEYWORDS = [
-    "Verfügung",
-    "Übermittlung",
-    "Transferlog",
-    "Zustellungsurkunde",
-    "Prüfvermerk",
-    "Herkunftsnachweis",
-    "Protokoll",
-    "Empfangsbekenntnis",
-    "Amtsgericht",
-]
+FULL_CONTEXT_SYSTEM_PROMPT = """\
+Du bist ein Experte für die Analyse von psychologischen Gutachten-PDFs ("Akten"). \
+Diese Dokumente bestehen aus mehreren aneinandergereihten Subdokumenten (z.B. \
+Polizeiberichte, Jugendamtberichte, ärztliche Stellungnahmen, Schreiben von \
+Anwälten, Gerichtsbeschlüsse, etc.). Daneben gibt es auch kurze, oft ein- bis zweiseitige \
+Verwaltungsdokumente wie Transfervermerke, Verfügungen, Prüfvermerke, \
+Kontrollbelege, Fehlblätter, Signaturprüfprotokolle, Übertragungsnachweise, \
+Erledigungsvermerke oder Empfangsbekenntnisse -- sie haben inhaltlich nichts \
+mit dem Gutachten zu tun, bilden aber trotzdem jeweils ein eigenes Segment.
 
-FULL_CONTEXT_SYSTEM_PROMPT = f"""\
-You are a document-boundary detector for a German case file ("Akte"). A case \
-file is a single PDF in which several distinct segments -- each with its own \
-type or role -- are concatenated one after another. Typical segment types \
-include letters, reports (e.g. police, youth-welfare, medical), court \
-documents, forms, invoices and acknowledgments of receipt.
+Du erhältst die GESAMTE Akte als JSON: eine geordnete Liste von \
+Seiten-Fingerprints unter dem Schlüssel "pages". Jeder Fingerprint ist ein \
+Objekt mit einer "page_number" und einer Liste von "blocks". Ein Block hat \
+"text" und einen "type":
+- "heading": Titel oder Abschnittsüberschrift.
+- "paragraph": normaler Textabsatz.
+- "list": Aufzählung.
+- "table": tabellarischer Inhalt.
+- "form": Formular- / Schlüssel-Wert-Bereich (Felder, Checkboxen).
+- "image": Logo, Stempel, Unterschrift oder Abbildung (oft ohne Text).
+- "handwritten": handschriftlicher Text.
+- "footer": Fußzeile (z.B. Seitenzahlen, Aktenzeichen).
+- "unknown": nicht klassifizierter Inhalt.
 
-You receive the WHOLE case file as JSON: an ordered list of page fingerprints \
-under the key "pages". Each fingerprint is an object with a "page_number" and a \
-list of "blocks". A block has "text" and a "type". The block types are:
-- "heading": a title or section header.
-- "paragraph": a normal text paragraph.
-- "list": a list of items.
-- "table": tabular content.
-- "form": a form / key-value region (fields, checkboxes).
-- "image": a logo, stamp, signature or figure (often carries little or no text).
-- "handwritten": handwritten text.
-- "footer": page footer (e.g. page numbers, file references).
-- "unknown": unclassified content.
+Deine Aufgabe: Identifiziere die Grenzen zwischen diesen Subdokumenten anhand \
+der Textblöcke und gruppiere die Seiten zu zusammenhängenden Segmenten -- jedes \
+Segment ist genau ein Subdokument. Nutze die gesamte Akte als Kontext: ein \
+späterer Absender kann erneut auftauchen, Seitennummerierungen können über ein \
+Segment hinweg laufen, und ein Thema kann sich über mehrere Seiten erstrecken.
 
-Your task: group the pages into contiguous segments, where each segment is one \
-document. Use the whole document for context -- a later page can resume an \
-earlier sender, page numbers can run across a segment, and a topic can span \
-several pages.
+Erkennungsmerkmale für einen neuen Dokumentanfang:
+- Neue Kopfzeile / neuer Briefkopf (Behörde, Aktenzeichen, Datum)
+- Anderer Absender oder Empfänger
+- Neuer Titel oder Betreff
+- Typografischer Neustart (Seitennummerierung beginnt neu bei 1)
+- Formularköpfe oder Stempelfelder
+- Deutlicher thematischer Bruch
 
-Useful signals that a page BEGINS A NEW segment include:
-- a new letterhead logo or sender at the top
-- a new heading containing one of these keywords {TYPICAL_KEYWORDS}
-- an empty page or a page that only contains images
-- content that differs thematically or in subject matter from the page before it
+ABDECKUNGSREGELN (müssen exakt eingehalten werden):
+- Gib die Segmente als Liste unter dem Schlüssel "segments" zurück.
+- Jedes Segment hat folgende Felder:
+  start_page  (int)   - erste Seite des Segments (1-basiert)
+  end_page    (int)   - letzte Seite des Segments (1-basiert)
+  confidence  (float) - Konfidenz der Segmentgrenzen (0.0-1.0)
+- Die Segmente sind geordnet und lückenlos: das erste Segment beginnt auf der \
+ersten Seite, das letzte Segment endet auf der letzten Seite, jede Seite gehört \
+zu genau EINEM Segment -- KEINE Lücken, KEINE Überlappungen. start_page des \
+nächsten Segments ist immer end_page des vorherigen Segments + 1.
+- start_page <= end_page für jedes Segment.
 
-Useful signals for a CONTINUATION of the current segment include:
-- prose or a sentence that runs on from the previous page
-- the same letterhead, sender or layout
-- content topically and semantically similar to the previous page
-
-COVERAGE RULES (must hold exactly):
-- Return segments as a list under the key "segments".
-- Each segment has "start_page", "end_page" and "confidence".
-- Segments are ordered and contiguous: the first segment starts at the first \
-page, the last segment ends at the last page, every page belongs to exactly one \
-segment, and there are NO gaps and NO overlaps. The next segment's start_page \
-is always the previous segment's end_page + 1.
-- start_page <= end_page for every segment.
-- confidence is a float in [0.0, 1.0] expressing how certain you are about that \
-segment's boundaries. 0.0 means 0% certain, 1.0 means 100% certain.
-
-Return ONLY a JSON object matching the provided schema. Emit no text outside \
-the JSON."""
+Antworte AUSSCHLIESSLICH mit einem JSON-Objekt nach dem vorgegebenen Schema, \
+ohne Erklärung, ohne Markdown-Backticks."""
