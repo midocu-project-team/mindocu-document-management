@@ -12,9 +12,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from datatypes import CaseFileDocument, DocumentSegment
+from datatypes import CaseFileDocument, DocumentSegment, SegmentationResult
 from llm import LLMProvider
-from pipeline import SegmentationStrategy, read_document
+from pipeline import SegmentationStrategy, make_segment, read_document
 
 from evaluation import metrics
 from evaluation.ground_truth import GroundTruth
@@ -91,6 +91,56 @@ def load_cached_document(
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(doc.model_dump_json())
     return doc
+
+
+def load_cached_segmentation(
+    pdf_name: str,
+    doc: CaseFileDocument,
+    *,
+    factory: StrategyFactory,
+    provider: LLMProvider,
+    cache_dir: Path = CACHE_DIR,
+    refresh: bool = False,
+) -> SegmentationResult:
+    """Loads a PDF's segments from cache, segmenting once on a cache miss.
+
+    The stage-2 sibling of ``load_cached_document``: the enrichment precursor
+    run segments each PDF once and stores the SegmentationResult as
+    ``<stem>.segments.json``; later runs deserialize that instead of re-running
+    the LLM. The cache does not record which run produced it — ``refresh``
+    forces a re-segmentation after precursor changes.
+    """
+    cache = cache_dir / f"{Path(pdf_name).stem}.segments.json"
+    if cache.exists() and not refresh:
+        return SegmentationResult.model_validate_json(cache.read_text())
+    result = factory(provider).segment_document(doc)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(result.model_dump_json())
+    return result
+
+
+def truth_segmentation(
+    doc: CaseFileDocument, truth: GroundTruth
+) -> SegmentationResult:
+    """Builds the ground-truth SegmentationResult for a read case file.
+
+    Used when the enrichment section has no segmentation precursor: enrichment
+    then runs on the true segments, isolating stage-3 quality from stage-2
+    boundary errors.
+    """
+    pages = {p.page_number: p for p in doc.pages}
+    segments = [
+        make_segment(
+            [pages[n] for n in range(s.start_page, s.end_page + 1) if n in pages], []
+        )
+        for s in truth.segments
+    ]
+    return SegmentationResult(
+        document_id=doc.document_id,
+        segments=segments,
+        segmentation_method="ground-truth",
+        errors=[],
+    )
 
 
 def evaluate_segmentation(

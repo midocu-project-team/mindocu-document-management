@@ -43,7 +43,8 @@ segmentation:
     #     model: qwen3:8b
 
 enrichment:
-  enabled: true # note: the evaluation runner does not execute this section yet
+  enabled: true
+  refresh_segments: false # true = ignore <stem>.segments.json and re-run the precursor
   # The stage-2 run whose segments get enriched (same schema as a segmentation
   # run). Omit (or set to null) to enrich the ground-truth segments once
   # enrichment evaluation is implemented.

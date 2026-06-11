@@ -21,6 +21,7 @@ from .segmentation import (
     PairwiseBoundarySegmentationStrategy,
 )
 from .segmentation.strategy import SegmentationStrategy
+from .segmentation.utils import make_segment
 
 __all__ = [
     # Stage 1: read
@@ -32,6 +33,7 @@ __all__ = [
     "FullContextOptions",
     "FullContextSegmentationStrategy",
     "PairwiseBoundarySegmentationStrategy",
+    "make_segment",
     # Stage 3: enrich
     "EnrichmentStrategy",
     "RelevanceKeywords",

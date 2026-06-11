@@ -177,6 +177,7 @@ class EnrichmentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
+    refresh_segments: bool = False  # ignore <stem>.segments.json and re-segment
     # The stage-2 run whose segments get enriched (strategy + provider +
     # options, same schema as a segmentation run).
     segmentation: SegmentationRunConfig | None = None
