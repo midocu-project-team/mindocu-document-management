@@ -7,7 +7,11 @@ the per-stage subpackages stay an implementation detail. The data contract
 lives in the top-level ``datatypes`` module, not here.
 """
 
-from .enrichment import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
+from .enrichment import (
+    KeywordRelevanceEnrichmentStrategy,
+    KeywordRelevanceOptions,
+    RelevanceKeywords,
+)
 from .enrichment.strategy import EnrichmentStrategy
 from .reader import ocr_convert_pdf, read_document
 from .reader.options import default_pdf_format_options
@@ -31,5 +35,6 @@ __all__ = [
     # Stage 3: enrich
     "EnrichmentStrategy",
     "RelevanceKeywords",
+    "KeywordRelevanceOptions",
     "KeywordRelevanceEnrichmentStrategy",
 ]

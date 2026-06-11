@@ -24,8 +24,8 @@ The three stages live in the **`pipeline/` package** (`pipeline/reader/`,
 3. **Enrich** (`pipeline/enrichment/`) — `SegmentationResult` → `EnrichmentResult`:
    enrich each segment with a title, an AI summary and a keyword-based
    relevance flag. **Implemented** as an `EnrichmentStrategy` package; the
-   first strategy is the deterministic keyword-relevance one (no LLM —
-   `title`/`summary` stay `None` until an LLM-backed strategy exists).
+   first strategy combines the deterministic keyword relevance decision with
+   per-segment LLM title/summary generation (gated on relevance).
 
 ## Conventions
 
@@ -87,14 +87,14 @@ imports won't resolve.
 | `pipeline/segmentation/pairwise_boundary/` | Strategy: per-adjacent-pair boundary classification (N−1 LLM calls). |
 | `pipeline/segmentation/full_context/` | Strategy: whole-document single-pass classification (one LLM call + windowing fallback). |
 | `pipeline/segmentation/utils.py` | Shared, strategy-agnostic helpers (`make_segment`). |
-| `llm/` | Interchangeable LLM backends behind one `LLMProvider` ABC (injected into stage-2 strategies). |
+| `llm/` | Interchangeable LLM backends behind one `LLMProvider` ABC (injected into stage-2/3 strategies). |
 | `llm/provider.py` | `LLMProvider` ABC + backend-agnostic `LLMResponse` (text, token counts, durations in seconds). |
 | `llm/ollama_provider.py` | Ollama backend; holds `num_ctx`/`keep_alive`/`think`; native grammar-constrained JSON. |
 | `llm/mlx_provider.py` | mlx-lm backend (in-process, Apple Silicon); outlines for constrained JSON. |
 | `pipeline/enrichment/` | Stage 3: `SegmentationResult` → `EnrichmentResult` (strategy package). |
 | `pipeline/enrichment/strategy.py` | `EnrichmentStrategy` ABC (the `enrich_segments` contract). |
 | `pipeline/enrichment/utils.py` | Strategy-agnostic keyword relevance (`RelevanceKeywords`, `decide_relevance`). |
-| `pipeline/enrichment/keyword_relevance/` | Strategy: deterministic heading-keyword relevance, no LLM (`title`/`summary` = `None`). |
+| `pipeline/enrichment/keyword_relevance/` | Strategy: heading-keyword relevance + per-segment LLM title/summary (gated on relevance). |
 | `logging_config.py` | `get_logger`; used across all stages. |
 | `tests/explore/` | Scratch scripts for trying docling/segmentation features (kept). |
 
@@ -121,8 +121,14 @@ block on any page of the segment; `relevant` matches beat `irrelevant` ones
 (fail-safe toward keeping a document visible); no hit ⇒ `default_relevance`
 (default `True`, blacklist style — a whitelist is `relevant`-only keywords
 plus `default_relevance=False`). `matched_keywords` records only the winning
-polarity's hits, so it always explains the decision. Future LLM strategies add
-`title`/`summary` generation and reuse the same deterministic decision.
+polarity's hits, so it always explains the decision. The keyword-relevance
+strategy takes a **required** `LLMProvider` plus a `KeywordRelevanceOptions`
+object and asks the LLM per segment for a title and a 2–4-sentence summary
+(German prompt, head-truncated segment text via `max_input_chars`). The
+relevance decision runs first and gates the call: irrelevant segments get no
+LLM call by default (`enrich_irrelevant=False`). A failed call degrades only
+that segment (`title`/`summary` = `None` + segment-scoped `EnrichmentError`);
+the deterministic relevance always survives.
 
 ## docling knowledge (hard-won; read before touching the `pipeline/reader/` package)
 
@@ -221,10 +227,10 @@ verified empirically against the test PDFs:
 
 ## Known gaps / WIP
 
-- Stage 3's keyword strategy fills `relevance`/`matched_keywords` only;
-  `title` and `summary` stay `None` until an LLM-backed enrichment strategy
-  exists (build segments via `EnrichedSegment.from_segment` to preserve the
-  `segment_id`).
+- Stage 3's LLM-generated titles/summaries are **unbenchmarked** (like the
+  stage-2 strategies); irrelevant segments get `title`/`summary` = `None` by
+  default (`enrich_irrelevant=False`). Build segments via
+  `EnrichedSegment.from_segment` to preserve the `segment_id`.
 - Stage 2 strategies are LLM-based and **unbenchmarked against ground truth** —
   the marked test PDF (`tests/assets/LR_32 F 245_24_markiert.pdf`) is the
   intended ground truth; boundary precision/recall per strategy is still TODO.

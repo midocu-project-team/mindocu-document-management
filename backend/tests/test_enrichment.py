@@ -1,24 +1,68 @@
-"""Unit tests for the stage-3 keyword enrichment.
+"""Unit tests for the stage-3 keyword-relevance enrichment.
 
 These cover the deterministic relevance decision (heading-only matching,
-polarity precedence, defaults) and the keyword strategy's result assembly.
-No LLM is involved anywhere in this strategy.
+polarity precedence, defaults) and the strategy's result assembly: gated
+title/summary generation, per-segment degradation on failed calls. The LLM
+side runs against a canned fake provider, never a real backend.
 """
+
+import json
+
+from pydantic import BaseModel
 
 from datatypes import (
     BlockType,
     ContentBlock,
     DocumentSegment,
+    EnrichmentErrorType,
     PageContent,
     SegmentationResult,
 )
-from pipeline import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
+from llm import LLMProvider, LLMResponse
+from pipeline import (
+    KeywordRelevanceEnrichmentStrategy,
+    KeywordRelevanceOptions,
+    RelevanceKeywords,
+)
 from pipeline.enrichment.utils import decide_relevance
 
 
 # --------------------------------------------------------------------------
 # Test doubles
 # --------------------------------------------------------------------------
+
+CANNED_TITLE = "Ärztliche Stellungnahme Dr. Müller, 12.03.2024"
+CANNED_SUMMARY = "Eine sachliche Zusammenfassung des Dokuments."
+
+
+class FakeProvider(LLMProvider):
+    """Canned-response provider: records every prompt, returns fixed text."""
+
+    def __init__(self, text: str | None = None, error: Exception | None = None):
+        self.prompts: list[str] = []
+        self.text = (
+            text
+            if text is not None
+            else json.dumps(
+                {"title": CANNED_TITLE, "summary": CANNED_SUMMARY},
+                ensure_ascii=False,
+            )
+        )
+        self.error = error
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        schema: type[BaseModel] | None = None,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> LLMResponse:
+        self.prompts.append(prompt)
+        if self.error is not None:
+            raise self.error
+        return LLMResponse(text=self.text)
 
 
 def make_block(text: str, block_type: BlockType = BlockType.HEADING) -> ContentBlock:
@@ -143,7 +187,7 @@ def test_strategy_enriches_all_segments_and_preserves_ids():
     relevant_segment = make_segment([make_page(1, [make_block("Anschreiben")])])
     junk_segment = make_segment([make_page(2, [make_block("Signaturprüfprotokoll")])])
     strategy = KeywordRelevanceEnrichmentStrategy(
-        RelevanceKeywords(irrelevant=["signaturprüfprotokoll"])
+        FakeProvider(), RelevanceKeywords(irrelevant=["signaturprüfprotokoll"])
     )
 
     result = strategy.enrich_segments(make_result([relevant_segment, junk_segment]))
@@ -155,24 +199,98 @@ def test_strategy_enriches_all_segments_and_preserves_ids():
     assert [s.relevance for s in result.segments] == [True, False]
 
 
-def test_strategy_leaves_title_and_summary_unset():
-    strategy = KeywordRelevanceEnrichmentStrategy(RelevanceKeywords())
+def test_strategy_sets_title_and_summary_for_relevant_segments():
+    strategy = KeywordRelevanceEnrichmentStrategy(FakeProvider(), RelevanceKeywords())
     segment = make_segment([make_page(1, [make_block("Anschreiben")])])
 
     enriched = strategy.enrich_segments(make_result([segment])).segments[0]
 
+    assert enriched.title == CANNED_TITLE
+    assert enriched.summary == CANNED_SUMMARY
+
+
+def test_strategy_skips_llm_for_irrelevant_segments():
+    provider = FakeProvider()
+    strategy = KeywordRelevanceEnrichmentStrategy(
+        provider, RelevanceKeywords(irrelevant=["signaturprüfprotokoll"])
+    )
+    segment = make_segment([make_page(1, [make_block("Signaturprüfprotokoll")])])
+
+    enriched = strategy.enrich_segments(make_result([segment])).segments[0]
+
+    assert provider.prompts == []  # no call spent on a junk segment
     assert enriched.title is None
     assert enriched.summary is None
 
 
+def test_enrich_irrelevant_option_generates_for_junk_segments_too():
+    provider = FakeProvider()
+    strategy = KeywordRelevanceEnrichmentStrategy(
+        provider,
+        RelevanceKeywords(irrelevant=["signaturprüfprotokoll"]),
+        KeywordRelevanceOptions(enrich_irrelevant=True),
+    )
+    segment = make_segment([make_page(1, [make_block("Signaturprüfprotokoll")])])
+
+    enriched = strategy.enrich_segments(make_result([segment])).segments[0]
+
+    assert len(provider.prompts) == 1
+    assert enriched.title == CANNED_TITLE
+    assert enriched.relevance is False
+
+
+def test_failed_call_degrades_segment_and_records_error():
+    strategy = KeywordRelevanceEnrichmentStrategy(
+        FakeProvider(error=RuntimeError("connection refused")), RelevanceKeywords()
+    )
+    segment = make_segment([make_page(1, [make_block("Anschreiben")])])
+
+    result = strategy.enrich_segments(make_result([segment]))
+
+    enriched = result.segments[0]
+    assert enriched.title is None and enriched.summary is None
+    assert enriched.relevance is True  # the deterministic part survives
+    assert [e.error_type for e in result.errors] == [
+        EnrichmentErrorType.LLM_CALL_FAILED
+    ]
+    assert result.errors[0].segment_id == segment.segment_id
+
+
+def test_unparseable_output_yields_invalid_output_error():
+    strategy = KeywordRelevanceEnrichmentStrategy(
+        FakeProvider(text="not json"), RelevanceKeywords()
+    )
+    segment = make_segment([make_page(1, [make_block("Anschreiben")])])
+
+    result = strategy.enrich_segments(make_result([segment]))
+
+    assert result.segments[0].title is None
+    assert [e.error_type for e in result.errors] == [
+        EnrichmentErrorType.INVALID_OUTPUT
+    ]
+
+
+def test_payload_is_head_truncated_to_max_input_chars():
+    provider = FakeProvider()
+    strategy = KeywordRelevanceEnrichmentStrategy(
+        provider, RelevanceKeywords(), KeywordRelevanceOptions(max_input_chars=11)
+    )
+    segment = make_segment([make_page(1, [make_block("Anschreiben mit langem Text")])])
+
+    strategy.enrich_segments(make_result([segment]))
+
+    assert provider.prompts == [segment.raw_text[:11]]
+
+
 def test_strategy_fills_result_metadata():
     strategy = KeywordRelevanceEnrichmentStrategy(
-        RelevanceKeywords(relevant=["urteil"], irrelevant=["signaturprüfprotokoll"])
+        FakeProvider(),
+        RelevanceKeywords(relevant=["urteil"], irrelevant=["signaturprüfprotokoll"]),
     )
 
     result = strategy.enrich_segments(make_result([]))
 
     assert result.document_id == "doc-1"
-    assert result.enrichment_method == "keyword"
+    assert result.enrichment_method == "llm+keyword"
     assert result.relevance_keywords == ["urteil", "signaturprüfprotokoll"]
     assert result.errors == []
