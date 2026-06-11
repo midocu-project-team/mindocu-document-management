@@ -21,7 +21,10 @@ from evaluation import metrics
 from evaluation.ground_truth import GroundTruth
 from evaluation.metered_provider import LLMUsage, MeteredProvider
 
-ASSETS_DIR = Path(__file__).resolve().parents[1] / "tests" / "assets"
+_TESTS_DIR = Path(__file__).resolve().parents[1] / "tests"
+ASSETS_DIR = _TESTS_DIR / "assets"  # the test PDFs
+CACHE_DIR = _TESTS_DIR / "cached"  # <stem>.cached.json read-once caches
+TRUTH_DIR = _TESTS_DIR / "truth"  # <stem>.truth.json ground truths
 
 # A strategy is built per run so it binds to the metered provider.
 StrategyFactory = Callable[[LLMProvider], SegmentationStrategy]
@@ -70,18 +73,23 @@ class SegmentationEvaluation:
 
 
 def load_cached_document(
-    pdf_name: str, *, assets_dir: Path = ASSETS_DIR, refresh: bool = False
+    pdf_name: str,
+    *,
+    assets_dir: Path = ASSETS_DIR,
+    cache_dir: Path = CACHE_DIR,
+    refresh: bool = False,
 ) -> CaseFileDocument:
     """Loads a read case file from cache, OCR'ing once on a cache miss.
 
     ``refresh`` forces a re-read (e.g. after reader changes) and rewrites the
     cache file afterwards.
     """
-    cache = assets_dir / f"{Path(pdf_name).stem}.cached.json"
+    cache = cache_dir / f"{Path(pdf_name).stem}.cached.json"
     if cache.exists() and not refresh:
         return CaseFileDocument.model_validate_json(cache.read_text())
     pdf_bytes = io.BytesIO((assets_dir / pdf_name).read_bytes())
     doc = read_document(pdf_bytes, pdf_name)
+    cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(doc.model_dump_json())
     return doc
 

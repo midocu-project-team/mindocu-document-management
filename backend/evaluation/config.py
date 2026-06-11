@@ -25,7 +25,7 @@ from segmentation import (
 )
 from segmentation.strategy import SegmentationStrategy
 
-from evaluation.harness import ASSETS_DIR
+from evaluation.harness import ASSETS_DIR, CACHE_DIR, TRUTH_DIR
 
 
 class ProviderConfig(BaseModel):
@@ -133,7 +133,9 @@ class EvaluationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pdfs: list[str]
-    assets_dir: Path = ASSETS_DIR
+    assets_dir: Path = ASSETS_DIR  # the test PDFs
+    cache_dir: Path = CACHE_DIR  # <stem>.cached.json read-once caches
+    truth_dir: Path = TRUTH_DIR  # <stem>.truth.json ground truths
     output_json: Path | None = None
     reader: ReaderConfig = ReaderConfig()
     segmentation: SegmentationConfig = SegmentationConfig()
@@ -179,6 +181,8 @@ def _resolve_paths(config: EvaluationConfig, *, base: Path) -> EvaluationConfig:
     return config.model_copy(
         update={
             "assets_dir": _anchor(config.assets_dir, base),
+            "cache_dir": _anchor(config.cache_dir, base),
+            "truth_dir": _anchor(config.truth_dir, base),
             "output_json": _anchor(output, base) if output is not None else None,
         }
     )

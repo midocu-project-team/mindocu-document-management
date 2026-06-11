@@ -7,7 +7,9 @@
 pdfs:
   - LR_32 F 245_24_markiert 2.pdf
 
-assets_dir: ../assets # where the PDFs, .cached.json and .truth.json files live
+assets_dir: ../assets # the test PDFs
+cache_dir: ../cached # <stem>.cached.json read-once OCR caches
+truth_dir: ../truth # <stem>.truth.json ground truths
 output_json: results/latest.json # optional; omit to skip the JSON dump
 
 reader:

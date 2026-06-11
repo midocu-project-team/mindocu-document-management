@@ -46,7 +46,10 @@ def main(argv: list[str]) -> None:
 
     docs = {
         pdf: load_cached_document(
-            pdf, assets_dir=config.assets_dir, refresh=config.reader.refresh_cache
+            pdf,
+            assets_dir=config.assets_dir,
+            cache_dir=config.cache_dir,
+            refresh=config.reader.refresh_cache,
         )
         for pdf in config.pdfs
     }
@@ -88,7 +91,7 @@ def _segmentation_rows(
     config: EvaluationConfig, docs: dict[str, CaseFileDocument]
 ) -> list[SegmentationEvaluation]:
     """Scores every configured (run, PDF) pair that has a usable ground truth."""
-    truths = _usable_truths(config.assets_dir, docs)
+    truths = _usable_truths(config.truth_dir, docs)
     rows: list[SegmentationEvaluation] = []
     for run in config.segmentation.runs:
         # One provider per run: MLX caches the loaded model in memory and
@@ -132,22 +135,23 @@ def _prediction_rows(
 
 
 def _usable_truths(
-    assets_dir: Path, docs: dict[str, CaseFileDocument]
+    truth_dir: Path, docs: dict[str, CaseFileDocument]
 ) -> dict[str, GroundTruth]:
     """The loaded ground truths of all PDFs that have a filled-in one."""
     return {
         pdf: truth
         for pdf, doc in docs.items()
-        if (truth := _load_or_template_truth(assets_dir, pdf, doc)) is not None
+        if (truth := _load_or_template_truth(truth_dir, pdf, doc)) is not None
     }
 
 
 def _load_or_template_truth(
-    assets_dir: Path, pdf_name: str, doc: CaseFileDocument
+    truth_dir: Path, pdf_name: str, doc: CaseFileDocument
 ) -> GroundTruth | None:
     """Loads a PDF's ground truth; writes a template and skips when absent."""
-    path = ground_truth_path(assets_dir, pdf_name)
+    path = ground_truth_path(truth_dir, pdf_name)
     if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(make_template(pdf_name, len(doc.pages)), encoding="utf-8")
         logger.warning(
             "No ground truth for %s — wrote template %s; fill it in and rerun.",

@@ -1,6 +1,6 @@
 """Ground-truth schema and loading for segmentation evaluation.
 
-A ground-truth file (``tests/assets/<stem>.truth.json``) records the *true*
+A ground-truth file (``tests/truth/<stem>.truth.json``) records the *true*
 document boundaries of a test PDF as a contiguous list of segments, hand-derived
 from the human-marked ``markiert`` PDFs. The schema mirrors the relevant part of
 ``DocumentSegment`` (a 1-based inclusive page range plus an optional label), so
@@ -68,9 +68,9 @@ def load_ground_truth(path: Path) -> GroundTruth:
     return GroundTruth.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def ground_truth_path(assets_dir: Path, pdf_name: str) -> Path:
-    """The conventional ``<stem>.truth.json`` path next to a test PDF."""
-    return assets_dir / f"{Path(pdf_name).stem}.truth.json"
+def ground_truth_path(truth_dir: Path, pdf_name: str) -> Path:
+    """The conventional ``<stem>.truth.json`` path for a test PDF."""
+    return truth_dir / f"{Path(pdf_name).stem}.truth.json"
 
 
 def make_template(pdf_name: str, total_pages: int) -> str:
