@@ -58,11 +58,27 @@ enrichment:
         backend: mlx
         model: mlx-community/Qwen3.6-35B-A3B-4bit
       keywords:
+        # Matching is case-insensitive substring search in HEADING blocks.
+        relevant: # relevant matches win over irrelevant ones
+          - Verfügung
         irrelevant:
-          - signaturprüfprotokoll
-        # relevant: [] # relevant matches win over irrelevant ones
+          - Prüfvermerk
+          - Zählblatt
+          # - PEBB§Y-Zählblatt
+          - Herkunftsnachweis
+          # - Vertrauenswürdiger Herkunftsnachweis
+          - Übermittlung
+          # - Übermittlung eines oder mehrerer Schriftgutobjekte
+          - Protokoll
+          # - Signaturprüfprotokoll
+          - Empfangsbekenntnis
+          - Transferlog
+          - Zustellungsurkunde
+          - Übertragungsnachweis
+          - Erledigungsvermerk
+          - Transfervermerk
         # default_relevance: true # applies when no keyword fires
-      # options: # extra KeywordRelevanceOptions fields, e.g.:
-      #   max_input_chars: 24000 # head-biased per-segment input cap
-      #   enrich_irrelevant: false # true = title/summary for junk segments too
+      options:
+        enrich_irrelevant: false # true = title/summary for junk segments too
+        # max_input_chars: 24000 # head-biased per-segment input cap
 
