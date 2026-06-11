@@ -42,3 +42,27 @@ segmentation:
     #     backend: ollama
     #     model: qwen3:8b
 
+enrichment:
+  enabled: true # note: the evaluation runner does not execute this section yet
+  # The stage-2 run whose segments get enriched (same schema as a segmentation
+  # run). Omit (or set to null) to enrich the ground-truth segments once
+  # enrichment evaluation is implemented.
+  segmentation:
+    strategy: full_context
+    provider:
+      backend: mlx
+      model: mlx-community/Qwen3.6-35B-A3B-4bit
+  runs:
+    - strategy: keyword_relevance
+      provider:
+        backend: mlx
+        model: mlx-community/Qwen3.6-35B-A3B-4bit
+      keywords:
+        irrelevant:
+          - signaturprüfprotokoll
+        # relevant: [] # relevant matches win over irrelevant ones
+        # default_relevance: true # applies when no keyword fires
+      # options: # extra KeywordRelevanceOptions fields, e.g.:
+      #   max_input_chars: 24000 # head-biased per-segment input cap
+      #   enrich_irrelevant: false # true = title/summary for junk segments too
+

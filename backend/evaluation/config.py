@@ -1,10 +1,12 @@
 """YAML-driven configuration for evaluation runs.
 
 One YAML file describes one full evaluation run: which test PDFs to score, a
-``reader:`` section for the intrinsic reader metrics and a ``segmentation:``
-section listing the (strategy, provider) combinations to benchmark. Pydantic
-validates the schema with ``extra="forbid"`` so a typo in the YAML fails fast
-with a clear message instead of silently configuring nothing.
+``reader:`` section for the intrinsic reader metrics, a ``segmentation:``
+section listing the (strategy, provider) combinations to benchmark and an
+``enrichment:`` section that selects the stage-2 run producing the segments
+plus the enrichment runs to execute on them. Pydantic validates the schema
+with ``extra="forbid"`` so a typo in the YAML fails fast with a clear message
+instead of silently configuring nothing.
 
 Run configs are data, not code: they live in ``tests/evaluation/*.yaml`` next
 to the test assets, and relative paths inside a config resolve against the
@@ -19,9 +21,13 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from llm import LLMProvider, MLXProvider, OllamaProvider
 from pipeline import (
+    EnrichmentStrategy,
     FullContextOptions,
     FullContextSegmentationStrategy,
+    KeywordRelevanceEnrichmentStrategy,
+    KeywordRelevanceOptions,
     PairwiseBoundarySegmentationStrategy,
+    RelevanceKeywords,
     SegmentationStrategy,
 )
 
@@ -106,6 +112,38 @@ class SegmentationRunConfig(BaseModel):
         return FullContextSegmentationStrategy(provider, options)
 
 
+class EnrichmentRunConfig(BaseModel):
+    """One enrichment row: an enrichment strategy bound to an LLM provider."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: Literal["keyword_relevance"]
+    provider: ProviderConfig
+    name: str | None = None  # display name; defaults to "<strategy>@<model>"
+    temperature: float = 0.0
+    keywords: RelevanceKeywords = RelevanceKeywords()
+    # Extra KeywordRelevanceOptions fields (max_input_chars, enrich_irrelevant).
+    options: dict[str, Any] = {}
+
+    @model_validator(mode="after")
+    def _check_strategy_options(self) -> "EnrichmentRunConfig":
+        """Fails fast on option keys the strategy would silently drop."""
+        _check_keyword_relevance_options(self.options)
+        return self
+
+    @property
+    def display_name(self) -> str:
+        """The strategy name shown in the report tables."""
+        return self.name or f"{self.strategy}@{self.provider.model}"
+
+    def build_strategy(self, provider: LLMProvider) -> EnrichmentStrategy:
+        """Builds the configured enrichment strategy bound to ``provider``."""
+        options = KeywordRelevanceOptions(
+            temperature=self.temperature, **self.options
+        )
+        return KeywordRelevanceEnrichmentStrategy(provider, self.keywords, options)
+
+
 class ReaderConfig(BaseModel):
     """The ``reader:`` section — intrinsic reader-quality metrics."""
 
@@ -127,6 +165,24 @@ class SegmentationConfig(BaseModel):
     runs: list[SegmentationRunConfig] = []
 
 
+class EnrichmentConfig(BaseModel):
+    """The ``enrichment:`` section — stage-2 precursor + enrichment runs.
+
+    Enrichment consumes a SegmentationResult, so the section selects the
+    stage-2 run that produces the segments; ``segmentation: null`` is reserved
+    for "enrich the ground-truth segments" once enrichment evaluation is
+    implemented. The runner does not execute this section yet.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    # The stage-2 run whose segments get enriched (strategy + provider +
+    # options, same schema as a segmentation run).
+    segmentation: SegmentationRunConfig | None = None
+    runs: list[EnrichmentRunConfig] = []
+
+
 class EvaluationConfig(BaseModel):
     """One full evaluation run as described by a YAML file."""
 
@@ -139,6 +195,7 @@ class EvaluationConfig(BaseModel):
     output_json: Path | None = None
     reader: ReaderConfig = ReaderConfig()
     segmentation: SegmentationConfig = SegmentationConfig()
+    enrichment: EnrichmentConfig = EnrichmentConfig()
 
 
 def load_config(path: Path) -> EvaluationConfig:
@@ -164,6 +221,15 @@ def _check_full_context_options(options: dict[str, Any]) -> None:
     unknown = set(options) - set(FullContextOptions.model_fields)
     if unknown:
         raise ValueError(f"unknown full_context options: {sorted(unknown)}")
+
+
+def _check_keyword_relevance_options(options: dict[str, Any]) -> None:
+    """Rejects option keys that KeywordRelevanceOptions would silently drop."""
+    if "temperature" in options:
+        raise ValueError("set temperature at the run level, not in options")
+    unknown = set(options) - set(KeywordRelevanceOptions.model_fields)
+    if unknown:
+        raise ValueError(f"unknown keyword_relevance options: {sorted(unknown)}")
 
 
 def _check_full_context_num_ctx(provider: ProviderConfig) -> None:
