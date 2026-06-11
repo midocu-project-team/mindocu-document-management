@@ -12,7 +12,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from evaluation.harness import SegmentationEvaluation
+from evaluation.harness import SegmentationEvaluation, SegmentationPrediction
 from evaluation.metrics import ReaderQuality
 
 
@@ -64,29 +64,81 @@ def render_segmentation_table(rows: list[SegmentationEvaluation]) -> Table:
     return table
 
 
+def render_prediction_table(rows: list[SegmentationPrediction]) -> Table:
+    """Summary of unscored runs: output size, speed and cost per (strategy, PDF)."""
+    table = Table(title="Segmentation predictions (unscored)")
+    for col in ("strategy", "PDF", "segments", "wall s", "s/pg", "calls", "tokens", "err"):
+        table.add_column(col)
+    for r in rows:
+        table.add_row(
+            r.strategy_name,
+            r.pdf_name,
+            str(len(r.segments)),
+            f"{r.wall_seconds:.1f}",
+            f"{r.wall_seconds / r.n_pages if r.n_pages else 0.0:.2f}",
+            str(r.usage.calls),
+            str(r.usage.prompt_tokens + r.usage.completion_tokens),
+            str(r.errors),
+        )
+    return table
+
+
+def render_segments_table(
+    rows: list[SegmentationEvaluation | SegmentationPrediction],
+) -> Table:
+    """Per-segment detail: one row per predicted segment of every run.
+
+    ``match`` compares against the ground truth ('-' when the run was unscored).
+    """
+    table = Table(title="Predicted segments (detail)")
+    for col in ("strategy", "PDF", "#", "pages", "n", "conf", "match"):
+        table.add_column(col)
+    for r in rows:
+        for index, segment in enumerate(r.segments, start=1):
+            table.add_row(
+                r.strategy_name,
+                r.pdf_name,
+                str(index),
+                f"{segment.start_page}-{segment.end_page}",
+                str(segment.end_page - segment.start_page + 1),
+                _fmt_opt(segment.confidence),
+                _fmt_match(segment.exact_match),
+            )
+    return table
+
+
 def print_report(
     reader_rows: list[tuple[str, ReaderQuality]],
     segmentation_rows: list[SegmentationEvaluation],
+    prediction_rows: list[SegmentationPrediction] | None = None,
     *,
+    show_segments: bool = False,
     console: Console | None = None,
 ) -> None:
-    """Prints both tables to the console."""
+    """Prints all requested tables to the console."""
     console = console or Console()
+    prediction_rows = prediction_rows or []
     if reader_rows:
         console.print(render_reader_table(reader_rows))
     if segmentation_rows:
         console.print(render_segmentation_table(segmentation_rows))
+    if prediction_rows:
+        console.print(render_prediction_table(prediction_rows))
+    if show_segments and (segmentation_rows or prediction_rows):
+        console.print(render_segments_table([*segmentation_rows, *prediction_rows]))
 
 
 def dump_json(
     reader_rows: list[tuple[str, ReaderQuality]],
     segmentation_rows: list[SegmentationEvaluation],
+    prediction_rows: list[SegmentationPrediction],
     path: Path,
 ) -> None:
     """Writes a machine-readable record of one evaluation run."""
     payload = {
         "reader": {name: asdict(q) for name, q in reader_rows},
         "segmentation": [asdict(r) for r in segmentation_rows],
+        "predictions": [asdict(r) for r in prediction_rows],
     }
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -99,3 +151,10 @@ def dump_json(
 def _fmt_opt(value: float | None) -> str:
     """Formats an optional score; '-' when unknown."""
     return f"{value:.2f}" if value is not None else "-"
+
+
+def _fmt_match(value: bool | None) -> str:
+    """Formats an exact-match flag; '-' when there was no ground truth."""
+    if value is None:
+        return "-"
+    return "[green]✓[/green]" if value else "[red]✗[/red]"

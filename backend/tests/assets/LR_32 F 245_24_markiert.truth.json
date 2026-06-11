@@ -1,0 +1,32 @@
+{
+  "_comment": "Replace the single placeholder segment with the real documents from the marked PDF. Segments must tile pages 1..total_pages with no gaps.",
+  "file_name": "LR_32 F 245_24_markiert.pdf",
+  "total_pages": 77,
+  "segments": [
+    {
+      "start_page": 1,
+      "end_page": 2,
+      "label": "PEBB§Y-Zählblatt"
+    },
+    {
+      "start_page": 3,
+      "end_page": 6,
+      "label": "PEBB§Y-Zählblatt"
+    },
+    {
+      "start_page": 7,
+      "end_page": 8,
+      "label": "PEBB§Y-Zählblatt"
+    },
+    {
+      "start_page": 9,
+      "end_page": 9,
+      "label": "Amtsgericht Gladbeck"
+    },
+    {
+      "start_page": 10,
+      "end_page": 10,
+      "label": "Prüfvermerk"
+    }
+  ]
+}

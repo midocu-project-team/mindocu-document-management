@@ -1,0 +1,42 @@
+# Default evaluation run. Copy this file to define further runs:
+#   uv run python -m evaluation                                # this file
+#   uv run python -m evaluation tests/evaluation/<run>.yaml    # a specific run
+# Relative paths below resolve against this file's directory.
+# Schema: evaluation/config.py (unknown keys fail validation).
+
+pdfs:
+  - LR_32 F 245_24_markiert 2.pdf
+
+assets_dir: ../assets # where the PDFs, .cached.json and .truth.json files live
+output_json: results/latest.json # optional; omit to skip the JSON dump
+
+reader:
+  enabled: true
+  refresh_cache: false # true = ignore <stem>.cached.json and re-OCR the PDF
+
+segmentation:
+  enabled: true
+  predict_only: true # true = skip scoring (no ground truth needed); just output the predicted segments
+  show_segments: false # list every predicted segment with ✓/✗ vs. ground truth (always on in predict_only)
+  tolerance: 1 # off-by-N page slack for the tolerant boundary score
+  runs:
+    # MLX example (in-process, Apple Silicon):
+    - strategy: full_context
+      provider:
+        backend: mlx
+        model: mlx-community/Qwen3.5-397B-A17B-nvfp4
+
+    # - strategy: full_context
+    #   provider:
+    #     backend: ollama
+    #     model: qwen3:8b
+    #     num_ctx: 131072 # required for full_context on Ollama
+    #   # options: # extra FullContextOptions fields, e.g.:
+    #   #   window_pages: 80
+    #   #   max_input_tokens: 100000
+
+    # - strategy: pairwise_boundary
+    #   provider:
+    #     backend: ollama
+    #     model: qwen3:8b
+

@@ -1,0 +1,12 @@
+{
+  "_comment": "Replace the single placeholder segment with the real documents from the marked PDF. Segments must tile pages 1..total_pages with no gaps.",
+  "file_name": "LR_32 F 245_24_markiert 2.pdf",
+  "total_pages": 124,
+  "segments": [
+    {
+      "start_page": 1,
+      "end_page": 124,
+      "label": "REPLACE_ME"
+    }
+  ]
+}
