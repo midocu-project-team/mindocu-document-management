@@ -143,7 +143,7 @@ class EnrichedSegment(DocumentSegment):
     summary: str | None  # AI summary of the segment (LLM-generated); None if generation failed
 
     relevance: bool  # Keyword-based decision, deterministic
-    matched_keywords: list[str]  # Keywords that fired (empty <=> relevance is False)
+    matched_keywords: list[str]  # Keywords whose match decided relevance (empty => default applied)
 
     @classmethod
     def from_segment(
