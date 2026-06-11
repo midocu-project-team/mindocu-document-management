@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
+import { getNextVisiblePage, getPreviousVisiblePage } from './segmentUtils'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -12,6 +13,7 @@ type PdfViewportProps = {
   pdfUrl?: string | null
   currentPage: number
   pageCount: number
+  visiblePages: number[]
   zoom: number
   onPageChange: (page: number) => void
   onPageCountChange: (pageCount: number) => void
@@ -41,6 +43,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     pdfUrl,
     currentPage,
     pageCount,
+    visiblePages,
     zoom,
     onPageChange,
     onPageCountChange,
@@ -49,27 +52,29 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   },
   ref,
 ) {
-  const pageRefs = useRef<Array<HTMLDivElement | null>>([])
+  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const onPageChangeRef = useRef(onPageChange)
   const isScrollingRef = useRef(false)
   const [loadedPages, setLoadedPages] = useState(0)
 
-  const displayPageCount = pdfUrl ? loadedPages || pageCount : pageCount
+  const renderedPages = visiblePages
+  const displayPageCount = visiblePages.length
 
   onPageChangeRef.current = onPageChange
 
   const getMostVisiblePage = useCallback(() => {
     const root = viewportRef.current
     if (!root) {
-      return 1
+      return renderedPages[0] ?? 1
     }
 
     const rootRect = root.getBoundingClientRect()
-    let bestPage = 1
+    let bestPage = renderedPages[0] ?? 1
     let bestVisibleRatio = 0
 
-    pageRefs.current.forEach((pageElement, index) => {
+    renderedPages.forEach((pageNumber) => {
+      const pageElement = pageRefs.current[pageNumber]
       if (!pageElement) {
         return
       }
@@ -82,12 +87,24 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
 
       if (visibleRatio > bestVisibleRatio) {
         bestVisibleRatio = visibleRatio
-        bestPage = index + 1
+        bestPage = pageNumber
       }
     })
 
     return bestPage
-  }, [])
+  }, [renderedPages])
+
+  
+  const getVisiblePageIndex = useCallback((page: number): number => {
+    return renderedPages.indexOf(page)
+  }, [renderedPages])
+  
+  const getVirtualCurrentPage = useCallback(() => {
+    const idx = getVisiblePageIndex(currentPage)
+    return idx >= 0 ? idx + 1 : 1
+  }, [currentPage, getVisiblePageIndex])
+
+  const virtualCurrent = getVirtualCurrentPage()
 
   useEffect(() => {
     const root = viewportRef.current
@@ -122,7 +139,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
         clearTimeout(scrollIdleTimer)
       }
     }
-  }, [getMostVisiblePage, pdfUrl, displayPageCount])
+  }, [getMostVisiblePage, pdfUrl, displayPageCount, renderedPages])
 
   useEffect(() => {
     const root = viewportRef.current
@@ -155,23 +172,34 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
       },
     )
 
-    pageRefs.current.forEach((pageRef) => {
+    renderedPages.forEach((pageNumber) => {
+      const pageRef = pageRefs.current[pageNumber]
       if (pageRef) {
         observer.observe(pageRef)
       }
     })
 
     return () => observer.disconnect()
-  }, [pdfUrl, pageCount, zoom, displayPageCount])
+  }, [pdfUrl, pageCount, zoom, displayPageCount, renderedPages])
 
   const goToPage = useCallback(
     (page: number) => {
-      const safePage = Math.min(Math.max(page, 1), displayPageCount)
-      onPageChange(safePage)
-      pageRefs.current[safePage - 1]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      if (!renderedPages.includes(page)) {
+        return
+      }
+
+      onPageChange(page)
+      pageRefs.current[page]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
     },
-    [displayPageCount, onPageChange],
+    [onPageChange, renderedPages],
   )
+
+  useEffect(() => {
+    if (renderedPages.length === 0) return
+    if (!renderedPages.includes(currentPage)) {
+      onPageChange(renderedPages[0])
+    }
+  }, [renderedPages, currentPage, onPageChange])
 
   useImperativeHandle(ref, () => ({ goToPage }), [goToPage])
 
@@ -184,20 +212,21 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     <section className="mindocu-pdf-stage" aria-label="Dokumentansicht">
 
       <div ref={viewportRef} className="mindocu-pdf-scrollarea">
-        {pdfUrl ? (
+        {pdfUrl && renderedPages.length === 0 ? (
+          <div className="mindocu-pdf-loading">Keine Seiten für die aktuelle Filterauswahl sichtbar.</div>
+        ) : pdfUrl ? (
           <Document
             file={pdfUrl}
             onLoadSuccess={handlePdfLoad}
             loading={<div className="mindocu-pdf-loading">PDF wird geladen ...</div>}
             error={<div className="mindocu-pdf-loading">PDF konnte nicht geladen werden.</div>}
           >
-            {Array.from({ length: displayPageCount }, (_, index) => {
-              const pageNumber = index + 1
+            {renderedPages.map((pageNumber) => {
               return (
                 <div
                   key={pageNumber}
                   ref={(element) => {
-                    pageRefs.current[index] = element
+                    pageRefs.current[pageNumber] = element
                   }}
                   data-page={pageNumber}
                   className="mindocu-pdf-pagewrap"
@@ -215,7 +244,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
         ) : (
           <div
             ref={(element) => {
-              pageRefs.current[0] = element
+              pageRefs.current[1] = element
             }}
             data-page={1}
             className="mindocu-demo-page"
@@ -269,22 +298,34 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
 
       <div className="mindocu-page-controls" aria-label="Seitensteuerung">
         <div className="mindocu-page-counter">
-          <div className="mindocu-page-counter-current">{currentPage}</div>
+          <div className="mindocu-page-counter-current">{virtualCurrent}</div>
         </div>
         <div className="mindocu-page-counter-total">{displayPageCount}</div>
           <button
           type="button"
           className="mindocu-page-control"
-          onClick={() => goToPage(currentPage - 1)}
+          onClick={() => {
+            const previousPage = getPreviousVisiblePage(currentPage, renderedPages)
+            if (previousPage) {
+              goToPage(previousPage)
+            }
+          }}
           aria-label="Vorherige Seite"
+          disabled={!getPreviousVisiblePage(currentPage, renderedPages)}
         >
           <ChevronUp size={18} />
         </button>
         <button
           type="button"
           className="mindocu-page-control"
-          onClick={() => goToPage(currentPage + 1)}
+          onClick={() => {
+            const nextPage = getNextVisiblePage(currentPage, renderedPages)
+            if (nextPage) {
+              goToPage(nextPage)
+            }
+          }}
           aria-label="Nächste Seite"
+          disabled={!getNextVisiblePage(currentPage, renderedPages)}
         >
           <ChevronDown size={18} />
         </button>
