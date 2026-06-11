@@ -257,3 +257,8 @@ explore/
 
 # Evaluation run outputs (JSON dumps under tests/evaluation/results/)
 backend/tests/evaluation/results/
+
+# Test data — never commit (may contain confidential case-file content)
+backend/tests/assets/
+backend/tests/cached/
+backend/tests/truth/
