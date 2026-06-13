@@ -1,12 +1,11 @@
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 
 interface PipelineStatusBarProps {
-    caseName: string;
     steps: string[];
     currentStep: number; // 1-indexed
 }
 
-export default function PipelineStatusBar({ caseName, steps, currentStep }: PipelineStatusBarProps) {
+export default function PipelineStatusBar({ steps, currentStep }: PipelineStatusBarProps) {
     return (
         <Box sx={{
             display: 'flex',

@@ -45,7 +45,7 @@ export default function PdfUploadReview() {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <PipelineStatusBar caseName="" steps={STEPS} currentStep={currentStep} />
+            <PipelineStatusBar steps={STEPS} currentStep={currentStep} />
             <GenericHeader title="PDF Upload Review" />
 
             <Box sx={{ flex: 1, overflow: 'hidden', px: 4, py: 2 }}>

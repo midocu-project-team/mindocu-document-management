@@ -1,4 +1,4 @@
-import { Box, InputAdornment, MenuItem, Select, TextField, Typography } from '@mui/material';
+import { Box, InputAdornment, TextField, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 
 interface CasePageHeaderProps {
