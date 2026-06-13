@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Snackbar, Typography } from '@mui/material';
+import { Alert, Box, Button, Snackbar } from '@mui/material';
 import GenericHeader from '../workspace/GenericHeader';
 import { useState } from 'react';
 import PipelineStatusBar from './PipelineStatusBar';
@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useUploadDocuments } from '../../api/hooks';
 
 
-const STEPS = ['Hochladen', 'Einverständnis', 'Abschließen'];
+const STEPS = ['Hochladen', 'Einverständnis'];
 const MAX_FILES = 3;
 
 export default function PdfUploadReview() {
@@ -35,13 +35,13 @@ export default function PdfUploadReview() {
         });
     }
 
-    // After a successful upload the case is processing: show the polling screen.
+    // The last "Weiter" triggers the upload; on success show the processing screen.
     if (submitted && caseId) {
         return <UploadingPage caseId={caseId} />;
     }
 
     const isLastStep = currentStep === STEPS.length;
-    const canGoNext = (stepValidity[currentStep] ?? false) || isLastStep;
+    const canGoNext = stepValidity[currentStep] ?? false;
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -60,13 +60,6 @@ export default function PdfUploadReview() {
                 <Box sx={{ display: currentStep === 2 ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                     <Checkpoint onValidChange={v => setValid(2, v)} />
                 </Box>
-                <Box sx={{ display: currentStep === 3 ? 'flex' : 'none', flexDirection: 'column', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                    <Typography variant="h5">Bereit zum Verarbeiten</Typography>
-                    <Typography color="text.secondary">
-                        {files.length} {files.length === 1 ? 'PDF wird' : 'PDFs werden'} hochgeladen und automatisch verarbeitet.
-                    </Typography>
-                </Box>
-
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 4, py: 2, borderTop: '1px solid #e0e0e0' }}>
@@ -89,7 +82,7 @@ export default function PdfUploadReview() {
                         else setCurrentStep(s => s + 1);
                     }}
                 >
-                    {isLastStep ? (upload.isPending ? 'Wird hochgeladen…' : 'Fertig') : 'Weiter'}
+                    {upload.isPending ? 'Wird hochgeladen…' : 'Weiter'}
                 </Button>
             </Box>
 
