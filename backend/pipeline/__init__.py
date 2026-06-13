@@ -7,6 +7,7 @@ the per-stage subpackages stay an implementation detail. The data contract
 lives in ``pipeline.datatypes``.
 """
 
+from .document import CURRENT_SCHEMA_VERSION, Document
 from .enrichment import (
     KeywordRelevanceEnrichmentStrategy,
     KeywordRelevanceOptions,
@@ -19,6 +20,7 @@ from .reader import (
     default_pdf_format_options,
     ocr_convert_pdf,
 )
+from .runner import PipelineRunner
 from .segmentation import (
     FullContextOptions,
     FullContextSegmentationStrategy,
@@ -44,4 +46,8 @@ __all__ = [
     "RelevanceKeywords",
     "KeywordRelevanceOptions",
     "KeywordRelevanceEnrichmentStrategy",
+    # Composition (runs all three stages into one Document)
+    "PipelineRunner",
+    "Document",
+    "CURRENT_SCHEMA_VERSION",
 ]
