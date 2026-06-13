@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { getNextVisiblePage, getPreviousVisiblePage } from './segmentUtils'
@@ -23,21 +23,6 @@ type PdfViewportProps = {
 
 const PDF_BASE_WIDTH = 720
 
-const demoParagraphs = [
-  {
-    title: 'Amtsgericht Würzburg',
-    content: 'e-Aktendeckel / Stammdatenblatt',
-  },
-  {
-    title: 'Fall',
-    content: 'Würzburg, 12.02.2026',
-  },
-  {
-    title: 'Beteiligte',
-    content: 'Anna Musterfrau, Kevin Musterfrau, Josephine Musterfrau',
-  },
-]
-
 export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
   {
     pdfUrl,
@@ -56,7 +41,6 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const onPageChangeRef = useRef(onPageChange)
   const isScrollingRef = useRef(false)
-  const [loadedPages, setLoadedPages] = useState(0)
 
   const renderedPages = visiblePages
   const displayPageCount = visiblePages.length
@@ -204,7 +188,6 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   useImperativeHandle(ref, () => ({ goToPage }), [goToPage])
 
   const handlePdfLoad = ({ numPages }: { numPages: number }) => {
-    setLoadedPages(numPages)
     onPageCountChange(numPages)
   }
 
@@ -242,57 +225,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
             })}
           </Document>
         ) : (
-          <div
-            ref={(element) => {
-              pageRefs.current[1] = element
-            }}
-            data-page={1}
-            className="mindocu-demo-page"
-          >
-            <div className="mindocu-demo-page-header">
-              <div>
-                <div className="mindocu-demo-page-kicker">Amtsgericht Würzburg</div>
-                <div className="mindocu-demo-page-subtitle">e-Aktendeckel / Stammdatenblatt</div>
-              </div>
-              <div className="mindocu-demo-page-meta">Würzburg, 12.02.2026</div>
-            </div>
-
-            <div className="mindocu-demo-page-body">
-              <div className="mindocu-demo-meta-grid">
-                <div>
-                  <div className="mindocu-demo-meta-label">Stand</div>
-                  <div className="mindocu-demo-meta-value">30.09.2025</div>
-                </div>
-                <div>
-                  <div className="mindocu-demo-meta-label">Sachgebiet</div>
-                  <div className="mindocu-demo-meta-value">10 Familiensachen_AG</div>
-                </div>
-                <div>
-                  <div className="mindocu-demo-meta-label">Eingangsdatum</div>
-                  <div className="mindocu-demo-meta-value">5.02.2026</div>
-                </div>
-                <div>
-                  <div className="mindocu-demo-meta-label">Verfahrenswert</div>
-                  <div className="mindocu-demo-meta-value">-</div>
-                </div>
-              </div>
-
-              <div className="mindocu-demo-paragraphs">
-                {demoParagraphs.map((paragraph) => (
-                  <div key={paragraph.title} className="mindocu-demo-paragraph">
-                    <div className="mindocu-demo-paragraph-title">{paragraph.title}</div>
-                    <div className="mindocu-demo-paragraph-content">{paragraph.content}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mindocu-demo-textblock">
-                <span className="mindocu-demo-emphasis">Verfahrensbeteiligte</span>
-                <div>Rechtsanwaltskanzlei Breitmoser & Kollegen</div>
-                <div>Jugendamt Steglitz-Zehlendorf von Berlin</div>
-              </div>
-            </div>
-          </div>
+          <div className="mindocu-pdf-loading">Kein PDF ausgewählt.</div>
         )}
       </div>
 

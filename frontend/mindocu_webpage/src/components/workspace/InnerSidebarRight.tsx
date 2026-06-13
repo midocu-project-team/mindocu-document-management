@@ -1,5 +1,3 @@
-import RightSidebarToolbar from './RightSidebarToolbar'
-
 type InnerSidebarRightProps = {
   activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions'
   onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void
