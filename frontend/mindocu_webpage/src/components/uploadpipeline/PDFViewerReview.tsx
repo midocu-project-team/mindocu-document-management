@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Document, Page } from 'react-pdf';
 import { Box, Button, Card, CardContent, Grid, IconButton, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,42 +16,51 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 interface PdfEntry {
     name: string;
     url: string;
+    file: File;
 }
 
 interface PDFViewerReviewProps {
     onValidChange?: (valid: boolean) => void;
-    onFilesAdded?: (count: number) => void;
+    /** Emits the current list of selected PDF files whenever it changes. */
+    onFilesChange?: (files: File[]) => void;
+    /** Fired when a selection is (partially) rejected because the cap is hit. */
+    onLimitReached?: (maxFiles: number) => void;
+    maxFiles?: number;
 }
 
-export default function PDFViewerReview({ onValidChange, onFilesAdded }: PDFViewerReviewProps) {
+export default function PDFViewerReview({
+    onValidChange,
+    onFilesChange,
+    onLimitReached,
+    maxFiles = 3,
+}: PDFViewerReviewProps) {
         const inputRef = useRef<HTMLInputElement>(null);
         const scrollRef = useRef<HTMLDivElement>(null);
         const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
-    
+
         const [pdfs, setPdfs] = useState<PdfEntry[]>([]);
-        useEffect(() => { onValidChange?.(pdfs.length > 0); }, [pdfs.length]);
         const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
         const [pageCounts, setPageCounts] = useState<Record<string, number>>({});
         const [currentPage, setCurrentPage] = useState<number>(1);
         const [inputValue, setInputValue] = useState<string>('1');
         const [scale, setScale] = useState<number>(1.0);
-    
+
         const selectedPdf = selectedIndex !== null ? pdfs[selectedIndex] : null;
         const numPages = selectedPdf ? (pageCounts[selectedPdf.url] ?? 0) : 0;
-    
+
         function jumpToPage(page: number) {
             const clamped = Math.max(1, Math.min(page, numPages));
             setCurrentPage(clamped);
             setInputValue(String(clamped));
             pageRefs.current[clamped - 1]?.scrollIntoView({ behavior: 'smooth' });
         }
-    
+
         function handleInputCommit() {
             const parsed = parseInt(inputValue, 10);
             if (!isNaN(parsed)) jumpToPage(parsed);
             else setInputValue(String(currentPage));
         }
-        
+
     function handleScroll() {
         const container = scrollRef.current;
         if (!container) return;
@@ -78,18 +87,29 @@ export default function PDFViewerReview({ onValidChange, onFilesAdded }: PDFView
 
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = Array.from(e.target.files ?? []);
-        if (files.length === 0) return;
-        const newEntries: PdfEntry[] = files.map(f => ({ name: f.name, url: URL.createObjectURL(f) }));
-        setPdfs(prev => {
-            const updated = [...prev, ...newEntries];
-            setSelectedIndex(updated.length - 1);
-            return updated;
-        });
-        onFilesAdded?.(newEntries.length);
+        const incoming = Array.from(e.target.files ?? []);
+        e.target.value = '';
+        if (incoming.length === 0) return;
+
+        const room = Math.max(0, maxFiles - pdfs.length);
+        const accepted = incoming.slice(0, room);
+        if (accepted.length < incoming.length) {
+            onLimitReached?.(maxFiles);
+        }
+        if (accepted.length === 0) return;
+
+        const newEntries: PdfEntry[] = accepted.map((f) => ({
+            name: f.name,
+            url: URL.createObjectURL(f),
+            file: f,
+        }));
+        const updated = [...pdfs, ...newEntries];
+        setPdfs(updated);
+        setSelectedIndex(updated.length - 1);
         setCurrentPage(1);
         setInputValue('1');
-        e.target.value = '';
+        onValidChange?.(updated.length > 0);
+        onFilesChange?.(updated.map((entry) => entry.file));
     }
   return (
     <div>
@@ -109,10 +129,14 @@ export default function PDFViewerReview({ onValidChange, onFilesAdded }: PDFView
                         startIcon={<AddIcon />}
                         onClick={() => inputRef.current?.click()}
                         fullWidth
+                        disabled={pdfs.length >= maxFiles}
                         sx={{ mb: 2, borderRadius: 3, py: 1.5, textTransform: 'none', fontSize: 16 }}
                     >
                         Datei hochladen
                     </Button>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                        {pdfs.length} / {maxFiles} PDFs ausgewählt
+                    </Typography>
 
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {pdfs.map((pdf, i) => (

@@ -1,38 +1,43 @@
-import { Box, Button, Card, CardContent, IconButton, Typography } from '@mui/material';
+import { Alert, Box, Button, Snackbar, Typography } from '@mui/material';
 import GenericHeader from '../workspace/GenericHeader';
-import { Grid } from '@mui/material';
 import { useState } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-import ArticleIcon from '@mui/icons-material/Article';
 import PipelineStatusBar from './PipelineStatusBar';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import AddIcon from '@mui/icons-material/Add';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import PDFViewerReview from './PDFViewerReview';
 import UploadingPage from './UploadingPage';
 import Checkpoint from './Checkpoint';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCases } from '../../context/CasesContext';
-
+import { useUploadDocuments } from '../../api/hooks';
 
 
 const STEPS = ['Hochladen', 'Einverständnis', 'Abschließen'];
+const MAX_FILES = 3;
 
 export default function PdfUploadReview() {
     const navigator = useNavigate();
     const { caseId } = useParams<{ caseId: string }>();
     const [currentStep, setCurrentStep] = useState<number>(1);
     const [stepValidity, setStepValidity] = useState<Record<number, boolean>>({});
-    const { cases, setCaseStatus, addFileToCase } = useCases();
-    const currentCase = cases.find(c => c.id === caseId);
+    const [files, setFiles] = useState<File[]>([]);
+    const [submitted, setSubmitted] = useState(false);
+    const [notice, setNotice] = useState<string | null>(null);
+    const upload = useUploadDocuments(caseId);
 
     function setValid(step: number, valid: boolean) {
         setStepValidity(prev => ({ ...prev, [step]: valid }));
+    }
+
+    function handleFinish() {
+        if (!caseId || files.length === 0) return;
+        upload.mutate(files, {
+            onSuccess: () => setSubmitted(true),
+            onError: (error) =>
+                setNotice(error instanceof Error ? error.message : 'Upload fehlgeschlagen.'),
+        });
+    }
+
+    // After a successful upload the case is processing: show the polling screen.
+    if (submitted && caseId) {
+        return <UploadingPage caseId={caseId} />;
     }
 
     const isLastStep = currentStep === STEPS.length;
@@ -40,21 +45,26 @@ export default function PdfUploadReview() {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <PipelineStatusBar caseName={currentCase?.name ?? ''} steps={STEPS} currentStep={currentStep} />
+            <PipelineStatusBar caseName="" steps={STEPS} currentStep={currentStep} />
             <GenericHeader title="PDF Upload Review" />
 
             <Box sx={{ flex: 1, overflow: 'hidden', px: 4, py: 2 }}>
                 <Box sx={{ display: currentStep === 1 ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                     <PDFViewerReview
+                        maxFiles={MAX_FILES}
                         onValidChange={v => setValid(1, v)}
-                        onFilesAdded={count => caseId && addFileToCase(caseId, count)}
+                        onFilesChange={setFiles}
+                        onLimitReached={(max) => setNotice(`Es sind höchstens ${max} PDFs pro Fall erlaubt.`)}
                     />
                 </Box>
                 <Box sx={{ display: currentStep === 2 ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                     <Checkpoint onValidChange={v => setValid(2, v)} />
                 </Box>
-                <Box sx={{ display: currentStep === 3 ? 'flex' : 'none', flexDirection: 'column', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                    <UploadingPage />
+                <Box sx={{ display: currentStep === 3 ? 'flex' : 'none', flexDirection: 'column', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                    <Typography variant="h5">Bereit zum Verarbeiten</Typography>
+                    <Typography color="text.secondary">
+                        {files.length} {files.length === 1 ? 'PDF wird' : 'PDFs werden'} hochgeladen und automatisch verarbeitet.
+                    </Typography>
                 </Box>
 
             </Box>
@@ -73,20 +83,26 @@ export default function PdfUploadReview() {
                 <Button
                     variant="contained"
                     sx={{ borderRadius: 2, px: 4, textTransform: 'none', bgcolor: '#1a237e' }}
-                    disabled={!canGoNext}
+                    disabled={!canGoNext || upload.isPending}
                     onClick={() => {
-                        if (isLastStep){
-                            if (caseId) setCaseStatus(caseId, 'processing');
-                            navigator('/');
-                        }
-                        else {
-                            setCurrentStep(s => s + 1);
-                        }
+                        if (isLastStep) handleFinish();
+                        else setCurrentStep(s => s + 1);
                     }}
                 >
-                    {isLastStep ? 'Fertig' : 'Weiter'}
+                    {isLastStep ? (upload.isPending ? 'Wird hochgeladen…' : 'Fertig') : 'Weiter'}
                 </Button>
             </Box>
+
+            <Snackbar
+                open={!!notice}
+                autoHideDuration={4000}
+                onClose={() => setNotice(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setNotice(null)} severity="warning" variant="filled" sx={{ borderRadius: 2 }}>
+                    {notice}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
