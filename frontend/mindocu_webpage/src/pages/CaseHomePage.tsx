@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Box, Snackbar, Alert } from '@mui/material';
 import CasePageHeader from '../components/cases/CasePageHeader';
 import CaseSection from '../components/cases/CaseSection';
@@ -29,10 +29,6 @@ export default function CaseHomePage() {
   const [addOpen, setAddOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<CaseSummary | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isError) setNotice('Fälle konnten nicht geladen werden. Läuft das Backend?');
-  }, [isError]);
 
   function reportError(fallback: string) {
     return (error: unknown) => setNotice(error instanceof Error ? error.message : fallback);
@@ -90,6 +86,12 @@ export default function CaseHomePage() {
   return (
     <Box sx={{ p: 4 }}>
       <CasePageHeader title="Aktenanalyse" />
+
+      {isError && (
+        <Alert severity="warning" variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
+          Fälle konnten nicht geladen werden. Läuft das Backend?
+        </Alert>
+      )}
 
       <CaseSection
         title="Neue Fälle"

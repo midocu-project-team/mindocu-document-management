@@ -28,7 +28,7 @@ export function DocumentWorkspace() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'comment'>('select')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageCount, setPageCount] = useState(1)
+  const [reportedPageCount, setReportedPageCount] = useState<number | null>(null)
   const [zoom, setZoom] = useState(1)
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null)
   const [showRelevantSegments, setShowRelevantSegments] = useState(true)
@@ -47,17 +47,14 @@ export function DocumentWorkspace() {
 
   const activeSegment = activeSegments[selectedSegmentIndex] ?? activeSegments[0]
 
+  // The PDF's reported count wins once loaded; until then fall back to the
+  // document metadata so the visible-page list isn't briefly clamped.
+  const pageCount = reportedPageCount ?? activeDocument?.totalPages ?? 1
+
   const visiblePages = useMemo(
     () => getVisiblePages(activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments),
     [activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments],
   )
-
-  // Seed the page count from the document metadata; react-pdf refines it on load.
-  useEffect(() => {
-    if (activeDocument) {
-      setPageCount(activeDocument.totalPages)
-    }
-  }, [activeDocument])
 
   useEffect(() => {
     if (visiblePages.length === 0) {
@@ -86,6 +83,7 @@ export function DocumentWorkspace() {
 
   const handleSelectDocument = (documentId: string) => {
     setSelectedDocumentId(documentId)
+    setReportedPageCount(null)
     setCurrentPage(1)
     setSelectedSegmentIndex(0)
     setSearchQuery('')
@@ -194,7 +192,7 @@ export function DocumentWorkspace() {
               visiblePages={visiblePages}
               zoom={zoom}
               onPageChange={handlePageChange}
-              onPageCountChange={setPageCount}
+              onPageCountChange={setReportedPageCount}
               onZoomIn={() => setZoom((value) => clampZoom(value + 0.08))}
               onZoomOut={() => setZoom((value) => clampZoom(value - 0.08))}
             />
