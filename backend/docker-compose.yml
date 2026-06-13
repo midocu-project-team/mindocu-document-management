@@ -2,16 +2,14 @@ services:
   postgres:
     image: postgres:17
     container_name: mindocu-postgres
-    environment:
-      POSTGRES_USER: mindocu
-      POSTGRES_PASSWORD: mindocu
-      POSTGRES_DB: mindocu
+    env_file:
+      - .env
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - mindocu_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mindocu -d mindocu"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 5

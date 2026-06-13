@@ -91,7 +91,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    database_url: str = "postgresql+psycopg://mindocu:mindocu@localhost:5432/mindocu"
+    database_url: str
     storage_dir: Path = Path("data/pdfs")
     max_pdfs_per_case: int = 3
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
