@@ -4,19 +4,15 @@ import { ChevronDown, Eye, EyeOff, Filter } from 'lucide-react'
 type SegmentFilterDropdownProps = {
   showRelevantSegments: boolean
   showIrrelevantSegments: boolean
-  selectedSegmentRelevant: boolean
   onToggleShowRelevantSegments: () => void
   onToggleShowIrrelevantSegments: () => void
-  onToggleSelectedSegmentRelevance: () => void
 }
 
 export function SegmentFilterDropdown({
   showRelevantSegments,
   showIrrelevantSegments,
-  selectedSegmentRelevant,
   onToggleShowRelevantSegments,
   onToggleShowIrrelevantSegments,
-  onToggleSelectedSegmentRelevance,
 }: SegmentFilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement | null>(null)
@@ -46,10 +42,6 @@ export function SegmentFilterDropdown({
       document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
-
-  const toggleRelevanceLabel = selectedSegmentRelevant
-    ? 'Segment als irrelevant markieren'
-    : 'Segment als relevant markieren'
 
   return (
     <div className="mindocu-segment-filter" ref={dropdownRef}>
@@ -99,20 +91,6 @@ export function SegmentFilterDropdown({
             </button>
             <span className="mindocu-segment-filter-label">Irrelevante Segmente</span>
           </div>
-
-          <div className="mindocu-segment-filter-divider" role="separator" />
-
-          <button
-            type="button"
-            className="mindocu-segment-filter-action"
-            role="menuitem"
-            onClick={() => {
-              onToggleSelectedSegmentRelevance()
-              setIsOpen(false)
-            }}
-          >
-            {toggleRelevanceLabel}
-          </button>
         </div>
       ) : null}
     </div>

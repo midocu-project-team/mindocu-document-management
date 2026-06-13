@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { SearchToolbar } from './SearchToolbar'
 import { SegmentFilterDropdown } from './SegmentFilterDropdown'
-import { isSegmentVisible } from './segmentUtils'
+import { formatPageRange, isSegmentVisible } from './segmentUtils'
 
 export type Segment = {
+  id: string
   title: string
-  date: string
-  range: string
   summary: string
   relevant: boolean
+  start_page: number
+  end_page: number
 }
 
 type InnerSidebarLeftProps = {
@@ -21,7 +22,6 @@ type InnerSidebarLeftProps = {
   showIrrelevantSegments: boolean
   onToggleShowRelevantSegments: () => void
   onToggleShowIrrelevantSegments: () => void
-  onToggleSelectedSegmentRelevance: () => void
   query: string
   onQueryChange: (query: string) => void
   onClearQuery: () => void
@@ -37,7 +37,6 @@ export function InnerSidebarLeft({
   showIrrelevantSegments,
   onToggleShowRelevantSegments,
   onToggleShowIrrelevantSegments,
-  onToggleSelectedSegmentRelevance,
   query,
   onQueryChange,
   onClearQuery,
@@ -54,14 +53,12 @@ export function InnerSidebarLeft({
     activeCard?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedSegmentIndex, activeTab])
 
-  const selectedSegment = segments[selectedSegmentIndex] ?? segments[0]
-
   const filteredSegments = segments.filter((segment) => {
     if (!isSegmentVisible(segment, showRelevantSegments, showIrrelevantSegments)) {
       return false
     }
 
-    const haystack = `${segment.title} ${segment.date} ${segment.range}`.toLowerCase()
+    const haystack = `${segment.title} ${formatPageRange(segment.start_page, segment.end_page)}`.toLowerCase()
     return haystack.includes(query.trim().toLowerCase())
   })
 
@@ -100,25 +97,18 @@ export function InnerSidebarLeft({
           <SegmentFilterDropdown
             showRelevantSegments={showRelevantSegments}
             showIrrelevantSegments={showIrrelevantSegments}
-            selectedSegmentRelevant={selectedSegment?.relevant ?? true}
             onToggleShowRelevantSegments={onToggleShowRelevantSegments}
             onToggleShowIrrelevantSegments={onToggleShowIrrelevantSegments}
-            onToggleSelectedSegmentRelevance={onToggleSelectedSegmentRelevance}
           />
 
           <div ref={segmentListRef} className="mindocu-segment-list" aria-label="Segmentliste">
             {filteredSegments.map((segment) => {
-              const segmentIndex = segments.findIndex(
-                (candidate) =>
-                  candidate.title === segment.title &&
-                  candidate.date === segment.date &&
-                  candidate.range === segment.range,
-              )
+              const segmentIndex = segments.findIndex((candidate) => candidate.id === segment.id)
               const isSelected = segmentIndex === selectedSegmentIndex
 
               return (
                 <button
-                  key={`${segment.title}-${segment.date}-${segment.range}`}
+                  key={segment.id}
                   type="button"
                   className={`mindocu-segment-card${isSelected ? ' is-active' : ''}${segment.relevant ? '' : ' is-irrelevant'}`}
                   onClick={() => {
@@ -129,8 +119,7 @@ export function InnerSidebarLeft({
                 >
                   <div className="mindocu-segment-card-title">{segment.title}</div>
                   <div className="mindocu-segment-card-meta">
-                    <span>{segment.date}</span>
-                    <span>{segment.range}</span>
+                    <span>{formatPageRange(segment.start_page, segment.end_page)}</span>
                   </div>
                 </button>
               )

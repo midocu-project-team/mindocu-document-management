@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { Topbar } from './Topbar'
-import { InnerSidebarLeft } from './InnerSidebarLeft'
+import { InnerSidebarLeft, type Segment } from './InnerSidebarLeft'
 import { InnerSidebarRight } from './InnerSidebarRight'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { PdfViewport, type PdfViewportHandle } from './PdfViewport'
@@ -9,15 +10,16 @@ import {
   findSegmentIndexForPage,
   getNearestVisiblePage,
   getVisiblePages,
-  parseSegmentStartPage,
 } from './segmentUtils'
-import { createInitialSegmentsByDocument, DEMO_WORKSPACE_DOCUMENTS } from './workspaceDocuments'
+import { toWorkspaceDocument } from './workspaceTypes'
+import { useCaseDetail } from '../../api/hooks'
 
-type WorkspaceProps = {
-  pdfUrl?: string | null
-}
+const NO_SEGMENTS: Segment[] = []
 
-export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
+export function DocumentWorkspace() {
+  const { caseId } = useParams<{ caseId: string }>()
+  const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId)
+
   const [leftTab, setLeftTab] = useState<'Segmente' | 'Suche'>('Segmente')
   const [rightTab, setRightTab] = useState<'Zusammenfassung' | 'Chat' | 'Chat Sessions'>('Zusammenfassung')
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
@@ -26,39 +28,36 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'comment'>('select')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageCount, setPageCount] = useState(23)
+  const [pageCount, setPageCount] = useState(1)
   const [zoom, setZoom] = useState(1)
-  const [selectedDocumentId, setSelectedDocumentId] = useState(DEMO_WORKSPACE_DOCUMENTS[0].id)
-  const [segmentsByDocument, setSegmentsByDocument] = useState(createInitialSegmentsByDocument)
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null)
   const [showRelevantSegments, setShowRelevantSegments] = useState(true)
   const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false)
   const pdfViewportRef = useRef<PdfViewportHandle>(null)
 
   const workspaceDocuments = useMemo(
-    () =>
-      DEMO_WORKSPACE_DOCUMENTS.map((document, index) =>
-        index === 0 && pdfUrl ? { ...document, pdfUrl } : document,
-      ),
-    [pdfUrl],
+    () => (caseDetail?.documents ?? []).map(toWorkspaceDocument),
+    [caseDetail],
   )
 
   const activeDocument =
     workspaceDocuments.find((document) => document.id === selectedDocumentId) ?? workspaceDocuments[0]
 
-  const activeSegments = segmentsByDocument[activeDocument.id] ?? activeDocument.segments
+  const activeSegments = activeDocument?.segments ?? NO_SEGMENTS
 
   const activeSegment = activeSegments[selectedSegmentIndex] ?? activeSegments[0]
 
   const visiblePages = useMemo(
-    () =>
-      getVisiblePages(
-        activeSegments,
-        pageCount,
-        showRelevantSegments,
-        showIrrelevantSegments,
-      ),
+    () => getVisiblePages(activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments),
     [activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments],
   )
+
+  // Seed the page count from the document metadata; react-pdf refines it on load.
+  useEffect(() => {
+    if (activeDocument) {
+      setPageCount(activeDocument.totalPages)
+    }
+  }, [activeDocument])
 
   useEffect(() => {
     if (visiblePages.length === 0) {
@@ -100,16 +99,7 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
       return
     }
 
-    pdfViewportRef.current?.goToPage(parseSegmentStartPage(segment.range))
-  }
-
-  const handleToggleSelectedSegmentRelevance = () => {
-    setSegmentsByDocument((previous) => ({
-      ...previous,
-      [activeDocument.id]: previous[activeDocument.id].map((segment, index) =>
-        index === selectedSegmentIndex ? { ...segment, relevant: !segment.relevant } : segment,
-      ),
-    }))
+    pdfViewportRef.current?.goToPage(segment.start_page)
   }
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value))
@@ -121,12 +111,12 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
   const toggleShowRelevant = () => {
     setShowRelevantSegments((current) => {
       if (current && !showIrrelevantSegments) {
-        return true 
+        return true
       }
       return !current
     })
   }
-  
+
   const toggleShowIrrelevant = () => {
     setShowIrrelevantSegments((current) => {
       if (current && !showRelevantSegments) {
@@ -134,6 +124,18 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
       }
       return !current
     })
+  }
+
+  if (isLoading) {
+    return <WorkspaceStatus message="Akte wird geladen …" />
+  }
+
+  if (isError || !caseDetail) {
+    return <WorkspaceStatus message="Akte konnte nicht geladen werden." />
+  }
+
+  if (!activeDocument) {
+    return <WorkspaceStatus message="Diese Akte enthält keine Dokumente." />
   }
 
   return (
@@ -161,7 +163,6 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
               showIrrelevantSegments={showIrrelevantSegments}
               onToggleShowRelevantSegments={toggleShowRelevant}
               onToggleShowIrrelevantSegments={toggleShowIrrelevant}
-              onToggleSelectedSegmentRelevance={handleToggleSelectedSegmentRelevance}
               query={searchQuery}
               onQueryChange={setSearchQuery}
               onClearQuery={() => setSearchQuery('')}
@@ -174,7 +175,7 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
                 documents={workspaceDocuments}
-                selectedDocumentId={selectedDocumentId}
+                selectedDocumentId={activeDocument.id}
                 onSelectDocument={handleSelectDocument}
                 currentPage={currentPage}
                 pageCount={pageCount}
@@ -203,11 +204,29 @@ export function DocumentWorkspace({ pdfUrl }: WorkspaceProps) {
             <InnerSidebarRight
               activeTab={rightTab}
               onTabChange={setRightTab}
-              segmentTitle={activeSegment.title}
-              summary={activeSegment.summary}
+              segmentTitle={activeSegment?.title ?? ''}
+              summary={activeSegment?.summary ?? ''}
             />
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function WorkspaceStatus({ message }: { message: string }) {
+  return (
+    <div className="mindocu-app-shell">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100vh',
+        }}
+      >
+        {message}
       </div>
     </div>
   )

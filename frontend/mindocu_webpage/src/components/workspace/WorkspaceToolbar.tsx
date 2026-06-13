@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, MessageCircle, PenLine, MousePointer, Folders } from 'lucide-react'
-import type { WorkspaceDocument } from './workspaceDocuments'
+import type { WorkspaceDocument } from './workspaceTypes'
 
 type WorkspaceToolbarProps = {
   activeTool: 'select' | 'pen' | 'comment'
