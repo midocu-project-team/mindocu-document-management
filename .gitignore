@@ -262,3 +262,6 @@ backend/tests/evaluation/results/
 backend/tests/assets/
 backend/tests/cached/
 backend/tests/truth/
+
+# Uploaded PDFs stored by the API (default storage_dir) — never commit
+backend/data/
