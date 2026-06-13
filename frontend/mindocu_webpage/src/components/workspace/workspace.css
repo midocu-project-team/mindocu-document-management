@@ -286,6 +286,8 @@
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  /* allow the scrollable child (segment list) to be height-constrained */
+  min-height: 0;
 }
 
 .mindocu-inner-panel--summary {
@@ -482,7 +484,11 @@
 .mindocu-segment-list {
   display: flex;
   flex-direction: column;
-  gap: 4px
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .mindocu-segment-card {
