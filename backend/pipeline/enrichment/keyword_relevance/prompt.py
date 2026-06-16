@@ -12,7 +12,7 @@ Verwaltungsvermerke).
 
 Du erhältst den Text GENAU EINES solchen Dokuments (bei langen Dokumenten \
 ggf. am Ende gekürzt). Deine Aufgabe:
-- "title": ein kurzer, prägnanter Dokumenttitel (maximal ca. 10 Wörter). \
+- "title": ein kurzer, prägnanter Dokumenttitel (maximal ca. 5 Wörter). \
 Nenne den Dokumenttyp und, falls erkennbar, Absender und Datum (z.B. \
 "Ärztliche Stellungnahme Dr. Müller, 12.03.2024").
 - "summary": eine sachliche Zusammenfassung des Inhalts in 2-4 Sätzen: Worum \

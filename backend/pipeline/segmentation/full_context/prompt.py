@@ -55,6 +55,19 @@ Erkennungsmerkmale für einen neuen Dokumentanfang:
 - Typografischer Neustart (Seitennummerierung beginnt neu bei 1)
 - Formularköpfe oder Stempelfelder
 - Deutlicher thematischer Bruch
+- Beginn eines kurzen Verwaltungs- oder Kontrollbelegs (siehe unten)
+
+KURZE VERWALTUNGSDOKUMENTE -- ZWINGEND EINZELN ABTRENNEN:
+Belege und Vermerke wie Prüfvermerk, Transfervermerk, Erledigungsvermerk, \
+Verfügung, Zählblatt, Herkunftsnachweis, Übermittlung(snachweis), Protokoll, \
+Signaturprüfprotokoll, Empfangsbekenntnis, Transferlog, Zustellungsurkunde, \
+Übertragungsnachweis und Fehlblatt sind MEISTENS NUR 1 ODER 2 SEITEN lang. \
+Jedes davon ist ein EIGENES Segment und MUSS strikt von den umliegenden \
+Subdokumenten (z.B. Gutachten, Berichten, Schreiben) getrennt werden -- es darf \
+NIEMALS mit dem davor- oder dahinterstehenden Dokument zu einem Segment \
+verschmelzen. Sobald eine Seite einen solchen Beleg/Vermerk trägt, beginnt dort \
+ein neues Segment, das nach 1-2 Seiten wieder endet. Im Zweifel lieber feiner \
+trennen als zusammenfassen.
 
 ABDECKUNGSREGELN (müssen exakt eingehalten werden):
 - Gib die Segmente als Liste unter dem Schlüssel "segments" zurück.
