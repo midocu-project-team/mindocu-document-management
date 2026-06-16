@@ -69,6 +69,44 @@ Diese Befehle aktualisieren automatisch `pyproject.toml` **und** `uv.lock`.
 
 ---
 
+# 🚀 Software starten (Step by Step)
+
+So bringst du das komplette System – Datenbank (Docker), Backend und Frontend –
+lokal zum Laufen.
+
+## 1. Ins Backend-Verzeichnis wechseln
+
+```bash
+cd backend
+```
+
+## 2. Docker-Container starten
+
+Startet die benötigten Dienste (z. B. die Datenbank) im Hintergrund (`-d` = detached):
+
+```bash
+docker-compose up -d
+```
+
+## 3. Backend starten
+
+```bash
+uv run uvicorn api.main:app --port 8000
+```
+
+> Das Backend ist anschließend unter http://localhost:8000 erreichbar.
+
+## 4. Frontend starten
+
+In einem **neuen Terminal-Tab**:
+
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
 # Git Workflow
 
 ## 🌿 Neues Feature starten
