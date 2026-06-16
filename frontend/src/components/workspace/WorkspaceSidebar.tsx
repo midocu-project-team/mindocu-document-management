@@ -1,5 +1,6 @@
 import { House } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ThemeToggle } from '../ThemeToggle'
 
 export function WorkspaceSidebar() {
   const navigate = useNavigate()
@@ -22,6 +23,10 @@ export function WorkspaceSidebar() {
           <House size={28} strokeWidth={2.1} />
         </button>
       </nav>
+
+      <div className="mindocu-sidebar-footer">
+        <ThemeToggle />
+      </div>
     </aside>
   )
 }

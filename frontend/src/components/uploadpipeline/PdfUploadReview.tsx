@@ -62,7 +62,7 @@ export default function PdfUploadReview() {
                 </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 4, py: 2, borderTop: '1px solid #e0e0e0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 4, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
                 <Button
                     variant="outlined"
                     sx={{ borderRadius: 2, px: 4, textTransform: 'none' }}
@@ -75,7 +75,7 @@ export default function PdfUploadReview() {
                 </Button>
                 <Button
                     variant="contained"
-                    sx={{ borderRadius: 2, px: 4, textTransform: 'none', bgcolor: '#1a237e' }}
+                    sx={{ borderRadius: 2, px: 4, textTransform: 'none' }}
                     disabled={!canGoNext || upload.isPending}
                     onClick={() => {
                         if (isLastStep) handleFinish();

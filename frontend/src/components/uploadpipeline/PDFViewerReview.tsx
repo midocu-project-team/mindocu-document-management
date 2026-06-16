@@ -16,7 +16,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url,
 ).toString();
 
-const BRAND = '#1a237e';
 const PDF_BASE_WIDTH = 600;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
@@ -228,18 +227,18 @@ export default function PDFViewerReview({
                                 onClick={() => inputRef.current?.click()}
                                 sx={{
                                     border: '2px dashed',
-                                    borderColor: isDragging ? BRAND : '#c5cae9',
+                                    borderColor: isDragging ? 'primary.main' : 'divider',
                                     borderRadius: 2,
                                     cursor: 'pointer',
                                     mb: 2,
-                                    bgcolor: isDragging ? 'rgba(26,35,126,0.04)' : 'transparent',
+                                    bgcolor: isDragging ? 'action.hover' : 'transparent',
                                     transition: 'all 0.15s',
-                                    '&:hover': { borderColor: BRAND, bgcolor: 'rgba(26,35,126,0.03)' },
+                                    '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
                                 }}
                             >
                                 <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2.5, '&:last-child': { pb: 2.5 } }}>
-                                    <CloudUploadOutlinedIcon sx={{ color: BRAND, mb: 0.5 }} />
-                                    <Typography sx={{ fontWeight: 600, fontSize: 14, color: BRAND }}>
+                                    <CloudUploadOutlinedIcon sx={{ color: 'primary.main', mb: 0.5 }} />
+                                    <Typography sx={{ fontWeight: 600, fontSize: 14, color: 'primary.main' }}>
                                         Dateien hinzufügen
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
@@ -258,11 +257,12 @@ export default function PDFViewerReview({
                                     key={pdf.url}
                                     variant="outlined"
                                     sx={{
-                                        border: selectedIndex === i ? `2px solid ${BRAND}` : '1px solid #e0e0e0',
+                                        border: selectedIndex === i ? '2px solid' : '1px solid',
+                                        borderColor: selectedIndex === i ? 'primary.main' : 'divider',
                                         borderRadius: 2,
                                         cursor: 'pointer',
                                         transition: 'border-color 0.15s',
-                                        '&:hover': { borderColor: BRAND },
+                                        '&:hover': { borderColor: 'primary.main' },
                                     }}
                                     onClick={() => selectPdf(i)}
                                 >
@@ -290,7 +290,7 @@ export default function PDFViewerReview({
                     {/* Right: PDF viewer */}
                     <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex' }}>
                         {selectedPdf && (
-                            <Box sx={{ position: 'relative', flex: 1, minHeight: 0, borderRadius: 3, bgcolor: '#f0f0f0', border: '1px solid #e0e0e0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={(theme) => ({ position: 'relative', flex: 1, minHeight: 0, borderRadius: 3, bgcolor: theme.palette.mode === 'dark' ? '#0f1014' : '#f0f0f0', border: '1px solid', borderColor: 'divider', overflow: 'hidden', display: 'flex', flexDirection: 'column' })}>
                                 <Box
                                     ref={scrollRef}
                                     onScroll={handleScroll}
@@ -332,7 +332,7 @@ export default function PDFViewerReview({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 0.5,
-                                    bgcolor: 'rgba(255,255,255,0.97)',
+                                    bgcolor: 'background.paper',
                                     borderRadius: 999,
                                     boxShadow: 3,
                                     px: 1,
@@ -351,8 +351,10 @@ export default function PDFViewerReview({
                                         sx={{
                                             width: 36,
                                             textAlign: 'center',
-                                            border: '1px solid #e0e0e0',
-                                            bgcolor: 'white',
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            bgcolor: 'background.paper',
+                                            color: 'text.primary',
                                             borderRadius: 1,
                                             fontSize: 14,
                                             fontWeight: 'bold',
@@ -366,7 +368,7 @@ export default function PDFViewerReview({
                                     <IconButton size="small" onClick={() => jumpToPage(currentPage + 1)} disabled={currentPage >= numPages}>
                                         <KeyboardArrowDownIcon fontSize="small" />
                                     </IconButton>
-                                    <Box sx={{ width: '1px', height: 24, bgcolor: '#e0e0e0', mx: 0.5 }} />
+                                    <Box sx={{ width: '1px', height: 24, bgcolor: 'divider', mx: 0.5 }} />
                                     <IconButton size="small" onClick={zoomOut} disabled={zoom <= MIN_ZOOM}>
                                         <ZoomOutIcon fontSize="small" />
                                     </IconButton>
@@ -394,13 +396,14 @@ export default function PDFViewerReview({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 1,
-                    bgcolor: 'rgba(26,35,126,0.06)',
-                    border: `2px dashed ${BRAND}`,
+                    bgcolor: 'action.hover',
+                    border: '2px dashed',
+                    borderColor: 'primary.main',
                     borderRadius: 4,
                     pointerEvents: 'none',
                 }}>
-                    <CloudUploadOutlinedIcon sx={{ fontSize: 64, color: BRAND }} />
-                    <Typography variant="h6" sx={{ color: BRAND, fontWeight: 600 }}>
+                    <CloudUploadOutlinedIcon sx={{ fontSize: 64, color: 'primary.main' }} />
+                    <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 600 }}>
                         Zum Hinzufügen loslassen
                     </Typography>
                 </Box>
@@ -430,15 +433,15 @@ function EmptyDropZone({ isDragging, maxFiles, onBrowse }: EmptyDropZoneProps) {
                 textAlign: 'center',
                 borderRadius: 4,
                 border: '2px dashed',
-                borderColor: isDragging ? BRAND : '#c5cae9',
-                bgcolor: isDragging ? 'rgba(26,35,126,0.04)' : '#fafbff',
+                borderColor: isDragging ? 'primary.main' : 'divider',
+                bgcolor: isDragging ? 'action.hover' : 'background.paper',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
-                '&:hover': { borderColor: BRAND, bgcolor: 'rgba(26,35,126,0.02)' },
+                '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
             }}
         >
-            <CloudUploadOutlinedIcon sx={{ fontSize: 72, color: isDragging ? BRAND : '#9fa8da', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#37474f' }}>
+            <CloudUploadOutlinedIcon sx={{ fontSize: 72, color: isDragging ? 'primary.main' : 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 PDFs hierher ziehen
             </Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -448,7 +451,7 @@ function EmptyDropZone({ isDragging, maxFiles, onBrowse }: EmptyDropZoneProps) {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={(e) => { e.stopPropagation(); onBrowse(); }}
-                sx={{ borderRadius: 2, px: 4, py: 1.2, textTransform: 'none', fontSize: 16, bgcolor: BRAND }}
+                sx={{ borderRadius: 2, px: 4, py: 1.2, textTransform: 'none', fontSize: 16, bgcolor: 'primary.main' }}
             >
                 Dateien durchsuchen
             </Button>

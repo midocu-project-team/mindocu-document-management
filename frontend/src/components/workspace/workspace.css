@@ -1008,3 +1008,135 @@
     justify-content: flex-start;
   }
 }
+
+/* ===================================================================
+   Dark mode overrides.
+   MUI applies the `.dark` class on <html> (see src/theme.ts,
+   colorSchemeSelector: 'class'). Re-mapping the CSS custom properties
+   flips every var(--mindocu-*) consumer automatically; the rules below
+   then override the selectors that hardcode light surfaces directly.
+   =================================================================== */
+.dark {
+  --mindocu-blue: #7c8cff;
+  --mindocu-blue-dark: #5b6ef5;
+  --mindocu-blue-light: #243056;
+  --mindocu-surface: #1a1c22;
+  --mindocu-surface-2: #1e2026;
+  --mindocu-line: #2e313b;
+  --mindocu-text: #c7cdd9;
+  --mindocu-text-strong: #f1f3f7;
+  --mindocu-muted: #98a1b3;
+  --mindocu-background-pdf: #0f1014;
+  --mindocu-scrollbar-track: #16181d;
+  --mindocu-scrollbar-thumb: #3a3f4d;
+  --mindocu-scrollbar-thumb-hover: #4c5263;
+  --mindocu-shadow:
+    rgba(0, 0, 0, 0.5) 0 16px 34px -16px, rgba(0, 0, 0, 0.4) 0 8px 16px -8px;
+}
+
+.dark .mindocu-app-shell {
+  background:
+    radial-gradient(circle at top, #1b1d24, #15161b 32%, #101116 100%);
+}
+
+.dark .mindocu-topbar {
+  background: rgba(28, 31, 40, 0.85);
+  border-bottom: 1px solid var(--mindocu-line);
+}
+
+.dark .mindocu-inner-sidebar {
+  background: rgba(30, 32, 38, 0.72);
+}
+
+.dark .mindocu-inner-sidebar,
+.dark .mindocu-inner-sidebar--left,
+.dark .mindocu-inner-sidebar--right {
+  border-color: var(--mindocu-line);
+}
+
+.dark .mindocu-inner-sidebar--left {
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.dark .mindocu-inner-tabs {
+  background: rgba(30, 32, 38, 0.84);
+  border-bottom: 1px solid var(--mindocu-line);
+}
+
+.dark .mindocu-inner-tab.is-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark .mindocu-right-toolbar .mindocu-sidebar-button {
+  background: var(--mindocu-surface-2);
+}
+
+.dark .mindocu-right-toolbar .mindocu-sidebar-button.is-active {
+  background: rgba(124, 140, 255, 0.16);
+}
+
+.dark .mindocu-searchbar-inputwrap {
+  border: 1px solid var(--mindocu-line);
+  background: var(--mindocu-surface-2);
+}
+
+.dark .mindocu-inner-searchhint,
+.dark .mindocu-empty-state {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dark .mindocu-segment-filter-trigger {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .mindocu-segment-filter-menu,
+.dark .mindocu-toolbar-pill.is-open,
+.dark .mindocu-toolbar-dropdown-menu {
+  background: var(--mindocu-surface-2);
+}
+
+.dark .mindocu-segment-card:hover,
+.dark .mindocu-segment-card:focus-visible,
+.dark .mindocu-segment-card.is-active {
+  background: rgba(124, 140, 255, 0.14);
+}
+
+.dark .mindocu-segment-card:not(.is-active) .mindocu-segment-card-title {
+  color: rgba(230, 232, 238, 0.8);
+}
+
+.dark .mindocu-segment-card:not(.is-active) .mindocu-segment-card-meta {
+  color: rgba(152, 161, 179, 0.82);
+}
+
+.dark .mindocu-segment-card.is-irrelevant:not(.is-active) .mindocu-segment-card-title {
+  color: rgba(152, 161, 179, 0.55);
+}
+
+.dark .mindocu-toolbar {
+  background: rgba(30, 32, 38, 0.9);
+  border: 1px solid var(--mindocu-line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.dark .mindocu-toolbar-pill {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .mindocu-pdf-loading {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .mindocu-page-controls {
+  background: rgba(30, 32, 38, 0.92);
+  border: 1px solid var(--mindocu-line);
+}
+
+.dark .mindocu-page-control {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark .mindocu-page-counter {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--mindocu-line);
+}

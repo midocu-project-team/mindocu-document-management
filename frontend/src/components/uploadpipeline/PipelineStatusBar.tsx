@@ -13,7 +13,7 @@ export default function PipelineStatusBar({ steps, currentStep }: PipelineStatus
             justifyContent: 'center',
             px: 4,
             py: 1.5,
-            bgcolor: '#ffffffff',
+            bgcolor: 'background.paper',
         }}>
 
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -30,8 +30,8 @@ export default function PipelineStatusBar({ steps, currentStep }: PipelineStatus
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                bgcolor: isActive || isDone ? '#1a237e' : '#e0e0e0',
-                                color: isActive || isDone ? 'white' : '#9e9e9e',
+                                bgcolor: isActive || isDone ? 'primary.main' : 'action.disabledBackground',
+                                color: isActive || isDone ? 'primary.contrastText' : 'text.disabled',
                                 fontSize: 13,
                                 fontWeight: 'bold',
                                 transition: 'background-color 0.2s',
@@ -42,7 +42,7 @@ export default function PipelineStatusBar({ steps, currentStep }: PipelineStatus
                                 <Box sx={{
                                     width: 32,
                                     height: 2,
-                                    bgcolor: isDone ? '#1a237e' : '#e0e0e0',
+                                    bgcolor: isDone ? 'primary.main' : 'divider',
                                     transition: 'background-color 0.2s',
                                 }} />
                             )}
