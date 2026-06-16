@@ -55,11 +55,12 @@ class DocumentRepository:
         return row
 
     def count_for_case(self, case_id: uuid.UUID) -> int:
-        return self.session.scalar(
+        count = self.session.scalar(
             select(func.count())
             .select_from(DocumentRow)
             .where(DocumentRow.case_id == case_id)
         )
+        return count or 0
 
     def set_status(
         self,
