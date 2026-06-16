@@ -50,9 +50,9 @@ def decide_relevance(
 
 
 def _heading_texts(segment: DocumentSegment) -> list[str]:
-    """Casefolded text of every HEADING block across the segment's pages."""
+    """Normalized text of every HEADING block across the segment's pages."""
     return [
-        block.text.casefold()
+        _normalize(block.text)
         for page in segment.pages
         for block in page.blocks
         if block.block_type is BlockType.HEADING
@@ -60,5 +60,21 @@ def _heading_texts(segment: DocumentSegment) -> list[str]:
 
 
 def _matches(keywords: list[str], headings: list[str]) -> list[str]:
-    """Keywords that occur (case-insensitive) in at least one heading."""
-    return [kw for kw in keywords if any(kw.casefold() in h for h in headings)]
+    """Keywords whose normalized form occurs in at least one (normalized) heading.
+
+    `headings` are already normalized (see `_heading_texts`); the keyword is
+    normalized the same way so both sides ignore case and whitespace. The
+    original keyword string is returned so `matched_keywords` stays readable.
+    """
+    return [kw for kw in keywords if any(_normalize(kw) in h for h in headings)]
+
+
+def _normalize(text: str) -> str:
+    """Casefold and strip ALL whitespace, for whitespace-insensitive matching.
+
+    Removing (not just collapsing) whitespace lets a plain keyword like
+    "Prüfvermerk" still match a letter-spaced or OCR-fragmented heading such as
+    "P R Ü F V E R M E R K". Keyword and heading are run through the same
+    normalization, so word-spaced keywords keep working too.
+    """
+    return "".join(text.split()).casefold()
