@@ -2,9 +2,11 @@
 
 A single daemon worker drains a FIFO queue, so jobs run strictly sequentially
 -- stages 2/3 share one local LLM and must never run concurrently. The
-``JobQueue`` protocol keeps the call site agnostic so a Celery/ARQ backend can
-replace the in-process queue later. The actual per-job work lives in the
-module-level ``process_job`` so a synchronous test queue can reuse it verbatim.
+``JobQueue`` protocol keeps the call site agnostic so a broker-backed backend
+(RabbitMQ, Redis, ...) can replace the in-process queue later: the producer
+side only ever calls ``submit``. The actual per-job work lives in the
+module-level ``process_job`` so a synchronous test queue -- and a future
+out-of-process consumer/worker -- can reuse it verbatim.
 """
 
 import io
@@ -43,8 +45,20 @@ class PipelineJob:
     file_name: str
 
 
-class JobQueue(Protocol):
-    """Submit interface; implementations decide how/when the job runs."""
+class Lifecycle(Protocol):
+    """Start/stop hooks for a backend that owns a resource (worker thread,
+    broker connection, ...). Kept separate from ``JobQueue`` because the
+    submit side is broker-agnostic while the lifecycle is implementation
+    detail -- a future RabbitMQ producer opens/closes its connection here."""
+
+    def start(self) -> None: ...
+    def stop(self) -> None: ...
+
+
+class JobQueue(Lifecycle, Protocol):
+    """Submit + lifecycle interface; implementations decide how/when the job
+    runs. ``submit`` is the stable, broker-agnostic core (in-process queue
+    today, ``basic_publish`` to a RabbitMQ exchange later)."""
 
     def submit(self, job: PipelineJob) -> None: ...
 
@@ -59,7 +73,9 @@ def process_job(
             document = runner.run(
                 io.BytesIO(Path(job.pdf_path).read_bytes()),
                 job.file_name,
-                on_stage=lambda stage: _record_stage(session, repo, job.document_id, stage),
+                on_stage=lambda stage: _record_stage(
+                    session, repo, job.document_id, stage
+                ),
             )
             # The app owns document_id (assigned at upload); override the
             # pipeline's internally generated one so it matches the row PK.
@@ -69,7 +85,9 @@ def process_job(
         except Exception as exc:  # degrade this job; keep the worker alive
             logger.exception("pipeline job failed for document %s", job.document_id)
             session.rollback()
-            repo.set_status(job.document_id, ProcessingStatus.FAILED, error_message=str(exc))
+            repo.set_status(
+                job.document_id, ProcessingStatus.FAILED, error_message=str(exc)
+            )
             session.commit()
 
 
