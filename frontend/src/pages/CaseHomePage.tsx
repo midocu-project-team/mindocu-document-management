@@ -89,7 +89,7 @@ export default function CaseHomePage() {
 
       {isError && (
         <Alert severity="warning" variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
-          Fälle konnten nicht geladen werden. Läuft das Backend?
+          Oops! Fälle konnten nicht geladen werden. 
         </Alert>
       )}
 

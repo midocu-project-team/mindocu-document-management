@@ -36,6 +36,7 @@ DEFAULT_KEYWORDS = RelevanceKeywords(
         "Übertragungsnachweis",
         "Erledigungsvermerk",
         "Transfervermerk",
+        "Fehlblatt"
     ],
 )
 
@@ -119,4 +120,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Cached settings instance (one per process)."""
-    return Settings()
+    # Required fields (e.g. database_url) are populated from the environment /
+    # .env at runtime, which the type checker cannot see -- hence call-arg.
+    return Settings()  # type: ignore[call-arg]
