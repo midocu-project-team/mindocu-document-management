@@ -1,12 +1,16 @@
 # System prompt for the full-context (single-pass) segmentation strategy. A case
 # file ("Akte") is a single PDF in which several distinct documents -- each with
 # its own TYPE/ROLE -- are concatenated. Unlike the pairwise strategy, the model
-# here sees the WHOLE document at once (one compact fingerprint per page) and
-# returns the full list of segments directly. The prompt is German on purpose:
-# the case files are German and the boundary cues (letterheads, Aktenzeichen,
-# authority names) are German-language signals.
+# here sees the WHOLE document at once and returns the full list of segments
+# directly. The prompt is German on purpose: the case files are German and the
+# boundary cues (letterheads, Aktenzeichen, authority names) are German signals.
+#
+# The prompt is assembled from a shared intro + a per-page-view format block
+# (fingerprint vs. markdown) + a shared task. The SAME page_view switch picks the
+# format block here and the page renderer in segmentation.py, so the input
+# description can never drift from what is actually sent.
 
-FULL_CONTEXT_SYSTEM_PROMPT = """\
+_INTRO = """\
 Du bist ein Experte für die Analyse von psychologischen Gutachten-PDFs ("Akten"). \
 Diese Dokumente bestehen aus mehreren aneinandergereihten Subdokumenten (z.B. \
 Polizeiberichte, Jugendamtberichte, ärztliche Stellungnahmen, Schreiben von \
@@ -14,8 +18,9 @@ Anwälten, Gerichtsbeschlüsse, etc.). Daneben gibt es auch kurze, oft ein- bis 
 Verwaltungsdokumente wie Transfervermerke, Verfügungen, Prüfvermerke, \
 Kontrollbelege, Fehlblätter, Signaturprüfprotokolle, Übertragungsnachweise, \
 Erledigungsvermerke oder Empfangsbekenntnisse -- sie haben inhaltlich nichts \
-mit dem Gutachten zu tun, bilden aber trotzdem jeweils ein eigenes Segment.
+mit dem Gutachten zu tun, bilden aber trotzdem jeweils ein eigenes Segment."""
 
+_FORMAT_FINGERPRINT = """\
 Du erhältst die GESAMTE Akte als JSON: eine geordnete Liste von \
 Seiten-Fingerprints unter dem Schlüssel "pages". Jeder Fingerprint ist ein \
 Objekt mit einer "page_number" und einer Liste von "blocks". Ein Block hat \
@@ -28,10 +33,17 @@ Objekt mit einer "page_number" und einer Liste von "blocks". Ein Block hat \
 - "image": Logo, Stempel, Unterschrift oder Abbildung (oft ohne Text).
 - "handwritten": handschriftlicher Text.
 - "footer": Fußzeile (z.B. Seitenzahlen, Aktenzeichen).
-- "unknown": nicht klassifizierter Inhalt.
+- "unknown": nicht klassifizierter Inhalt."""
 
+_FORMAT_MARKDOWN = """\
+Du erhältst die GESAMTE Akte als JSON: eine geordnete Liste von Seiten unter \
+dem Schlüssel "pages". Jede Seite ist ein Objekt mit einer "page_number" und \
+einem "text" -- dem vollständigen Seiteninhalt als Markdown (Überschriften, \
+Absätze, Tabellen, Listen)."""
+
+_TASK = """\
 Deine Aufgabe: Identifiziere die Grenzen zwischen diesen Subdokumenten anhand \
-der Textblöcke und gruppiere die Seiten zu zusammenhängenden Segmenten -- jedes \
+des Seiteninhalts und gruppiere die Seiten zu zusammenhängenden Segmenten -- jedes \
 Segment ist genau ein Subdokument. Nutze die gesamte Akte als Kontext: ein \
 späterer Absender kann erneut auftauchen, Seitennummerierungen können über ein \
 Segment hinweg laufen, und ein Thema kann sich über mehrere Seiten erstrecken.
@@ -58,3 +70,18 @@ nächsten Segments ist immer end_page des vorherigen Segments + 1.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt nach dem vorgegebenen Schema, \
 ohne Erklärung, ohne Markdown-Backticks."""
+
+_FORMAT_BY_VIEW = {
+    "fingerprint": _FORMAT_FINGERPRINT,
+    "markdown": _FORMAT_MARKDOWN,
+}
+
+
+def system_prompt_for(page_view: str) -> str:
+    """The full system prompt for a page_view: intro + format block + task.
+
+    The format block describes the exact wire format the matching page renderer
+    (segmentation._render_page) produces, so the two cannot drift.
+    """
+    fmt = _FORMAT_BY_VIEW[page_view]
+    return f"{_INTRO}\n\n{fmt}\n\n{_TASK}"

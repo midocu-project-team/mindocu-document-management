@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -13,7 +14,7 @@ from pipeline.datatypes import (
 )
 from llm import LLMProvider
 from logging_config import get_logger
-from pipeline.segmentation.full_context.prompt import FULL_CONTEXT_SYSTEM_PROMPT
+from pipeline.segmentation.full_context.prompt import system_prompt_for
 from pipeline.segmentation.strategy import SegmentationStrategy
 from pipeline.segmentation.utils import make_segment
 
@@ -31,6 +32,13 @@ class FullContextOptions(BaseModel):
 
     temperature: float = 0.0
 
+    # How each page is rendered for the model. "fingerprint" sends the leading
+    # blocks with their types (compact); "markdown" sends the page's full
+    # raw_text (the docling markdown export). The same switch selects the
+    # matching system-prompt format block (see prompt.system_prompt_for), so the
+    # input description can never drift from what is actually sent.
+    page_view: Literal["fingerprint", "markdown"] = "fingerprint"
+
     # Windowing trigger: if the estimated input exceeds this, fall back to
     # sliding windows. Keep below the provider's context window to leave room
     # for the system prompt and the generated segment list.
@@ -40,8 +48,15 @@ class FullContextOptions(BaseModel):
     # fingerprint -- boundary cues sit at the top of a page (letterhead/heading).
     # None means "no cap": keep every block / each block's full text. Default is
     # None (full text of all blocks); set ints to trim for very large documents.
+    # Only the "fingerprint" page_view honors these.
     max_chars_per_block: int | None = None
     head_blocks: int | None = None
+
+    # Per-page text cap for the "markdown" page_view (head-truncation of
+    # raw_text -- boundary cues sit at the top of a page, like head_blocks).
+    # None means "no cap": send the full page text and let max_input_tokens
+    # windowing handle very large documents.
+    max_chars_per_page: int | None = None
 
     # Sliding-window parameters for the large-document fallback.
     window_pages: int = 80
@@ -197,7 +212,7 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
         start_time = time.perf_counter()
         response = self.provider.generate(
             payload,
-            system=FULL_CONTEXT_SYSTEM_PROMPT,
+            system=system_prompt_for(self.options.page_view),
             schema=_SegmentationPlan,
             temperature=self.options.temperature,
         )
@@ -214,14 +229,24 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
 # ============================================================================
 
 
+def _render_page(page: PageContent, options: FullContextOptions) -> dict:
+    """One page as the model sees it, dispatched on `options.page_view`.
+
+    Both variants anchor on `page_number`, the key the model references in its
+    output; only the content representation differs.
+    """
+    if options.page_view == "markdown":
+        return _page_markdown(page, options)
+    return _page_fingerprint(page, options)
+
+
 def _page_fingerprint(page: PageContent, options: FullContextOptions) -> dict:
     """Compact page representation: leading blocks, capped text, no bbox.
 
     Only the first `head_blocks` blocks are kept -- boundary cues (letterhead,
     heading, sender) sit at the top of a page -- and each block's text is capped
     at `max_chars_per_block`. Either limit may be None ("no cap"): a None upper
-    slice bound keeps all blocks / each block's full text. Anchored on
-    `page_number`, the key the model references in its output.
+    slice bound keeps all blocks / each block's full text.
     """
     blocks = page.blocks[: options.head_blocks]
     return {
@@ -233,10 +258,21 @@ def _page_fingerprint(page: PageContent, options: FullContextOptions) -> dict:
     }
 
 
+def _page_markdown(page: PageContent, options: FullContextOptions) -> dict:
+    """Full-text page representation: the docling markdown export (raw_text).
+
+    Head-truncated at `max_chars_per_page` (None ⇒ no cap, send the full page).
+    """
+    return {
+        "page_number": page.page_number,
+        "text": page.raw_text[: options.max_chars_per_page],
+    }
+
+
 def _document_payload(pages: list[PageContent], options: FullContextOptions) -> str:
-    """The full user prompt: every page as a fingerprint, under "pages"."""
+    """The full user prompt: every page rendered for the model, under "pages"."""
     return json.dumps(
-        {"pages": [_page_fingerprint(p, options) for p in pages]},
+        {"pages": [_render_page(p, options) for p in pages]},
         ensure_ascii=False,
     )
 
