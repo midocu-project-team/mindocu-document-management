@@ -115,3 +115,31 @@ export function getPreviousVisiblePage(currentPage: number, visiblePages: number
 export function findSegmentIndexForPage(segments: Segment[], page: number): number {
   return segments.findIndex((segment) => pageIsInSegmentRange(page, segment))
 }
+
+/**
+ * Distance between two segments measured in *visible* (filtered) list positions
+ * rather than absolute indices. With irrelevant segments hidden, two cards that
+ * sit next to each other in the sidebar are one step apart even when several
+ * hidden segments lie between them in the underlying list. Returns Infinity when
+ * either segment is currently filtered out (so the caller falls back to a jump).
+ */
+export function visibleSegmentDistance(
+  segments: Segment[],
+  fromIndex: number,
+  toIndex: number,
+  showRelevantSegments: boolean,
+  showIrrelevantSegments: boolean,
+  query: string,
+): number {
+  const visibleIndices = segments
+    .map((_, index) => index)
+    .filter((index) => isSegmentShown(segments[index], showRelevantSegments, showIrrelevantSegments, query))
+
+  const from = visibleIndices.indexOf(fromIndex)
+  const to = visibleIndices.indexOf(toIndex)
+  if (from < 0 || to < 0) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  return Math.abs(to - from)
+}
