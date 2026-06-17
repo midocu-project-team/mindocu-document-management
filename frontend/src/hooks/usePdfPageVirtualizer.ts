@@ -26,8 +26,8 @@ export type PdfPageVirtualizer = {
   virtualItems: VirtualItem[]
   totalSize: number
   measureElement: (element: Element | null) => void
-  /** Smooth-scroll the page at this index to the top of the viewport. */
-  scrollToIndex: (index: number) => void
+  /** Scroll the page at this index to the top of the viewport. */
+  scrollToIndex: (index: number, behavior?: ScrollBehavior) => void
   /** Index of the page slot straddling the viewport's vertical centre. */
   getCenteredIndex: () => number | null
 }
@@ -76,8 +76,8 @@ export function usePdfPageVirtualizer({
     virtualItems: rowVirtualizer.getVirtualItems(),
     totalSize: rowVirtualizer.getTotalSize(),
     measureElement: rowVirtualizer.measureElement,
-    scrollToIndex: (index) =>
-      rowVirtualizer.scrollToIndex(index, { align: 'start', behavior: 'smooth' }),
+    scrollToIndex: (index, behavior = 'smooth') =>
+      rowVirtualizer.scrollToIndex(index, { align: 'start', behavior }),
     getCenteredIndex,
   }
 }

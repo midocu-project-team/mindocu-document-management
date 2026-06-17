@@ -7,7 +7,7 @@ import { getNextVisiblePage, getPreviousVisiblePage } from './segmentUtils'
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
 export type PdfViewportHandle = {
-  goToPage: (page: number) => void
+  goToPage: (page: number, behavior?: ScrollBehavior) => void
 }
 
 type PdfViewportProps = {
@@ -91,14 +91,14 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   const virtualCurrent = getVirtualCurrentPage()
 
   const goToPage = useCallback(
-    (page: number) => {
+    (page: number, behavior: ScrollBehavior = 'auto') => {
       const index = renderedPages.indexOf(page)
       if (index < 0) {
         return
       }
 
       onPageChange(page)
-      scrollToIndex(index)
+      scrollToIndex(index, behavior)
     },
     [onPageChange, renderedPages, scrollToIndex],
   )

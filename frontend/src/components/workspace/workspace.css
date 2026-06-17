@@ -871,7 +871,6 @@ body.mindocu-resizing * {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scroll-behavior: smooth;
   padding: 0 8px 24px;
   scrollbar-gutter: stable both-edges;
   scrollbar-color: var(--mindocu-scrollbar-thumb) var(--mindocu-scrollbar-track);

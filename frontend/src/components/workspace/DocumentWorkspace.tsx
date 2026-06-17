@@ -10,6 +10,7 @@ import {
   findSegmentIndexForPage,
   getNearestVisiblePage,
   getVisiblePages,
+  visibleSegmentDistance,
 } from './segmentUtils'
 import { SEGMENT_SUMMARY_FALLBACK, SEGMENT_TITLE_FALLBACK, toWorkspaceDocument } from './workspaceTypes'
 import { useResizableWidth } from './useResizableWidth'
@@ -25,6 +26,11 @@ const RIGHT_SIDEBAR = { initial: 380, min: 300, max: 640, storageKey: 'mindocu:r
 // off-canvas drawers that slide over the PDF (see workspace.css). Keep the
 // value in sync with the matching @media breakpoint there.
 const COMPACT_QUERY = '(max-width: 1100px)'
+
+// Selecting a segment within this many segments of the current one smooth-scrolls
+// the PDF; jumping further away snaps instantly so the viewport doesn't scroll
+// through the whole document.
+const SMOOTH_SCROLL_SEGMENT_DISTANCE = 2
 
 export function DocumentWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -117,6 +123,17 @@ export function DocumentWorkspace() {
   }
 
   const handleSelectSegment = (index: number) => {
+    // Distance is measured across the *visible* (filtered) segments, not absolute
+    // indices: with irrelevant segments hidden, two cards adjacent in the sidebar
+    // must smooth-scroll even when many hidden segments separate them underneath.
+    const distance = visibleSegmentDistance(
+      activeSegments,
+      selectedSegmentIndex,
+      index,
+      showRelevantSegments,
+      showIrrelevantSegments,
+      searchQuery,
+    )
     setSelectedSegmentIndex(index)
 
     const segment = activeSegments[index]
@@ -124,7 +141,8 @@ export function DocumentWorkspace() {
       return
     }
 
-    pdfViewportRef.current?.goToPage(segment.start_page)
+    const behavior: ScrollBehavior = distance <= SMOOTH_SCROLL_SEGMENT_DISTANCE ? 'smooth' : 'auto'
+    pdfViewportRef.current?.goToPage(segment.start_page, behavior)
   }
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value))
