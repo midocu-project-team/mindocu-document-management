@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { getNextVisiblePage, getPreviousVisiblePage } from './segmentUtils'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
@@ -12,7 +13,6 @@ export type PdfViewportHandle = {
 type PdfViewportProps = {
   pdfUrl?: string | null
   currentPage: number
-  pageCount: number
   visiblePages: number[]
   zoom: number
   onPageChange: (page: number) => void
@@ -22,12 +22,13 @@ type PdfViewportProps = {
 }
 
 const PDF_BASE_WIDTH = 720
+const PDF_PAGE_GAP = 18            // vertical gap between rendered pages (px)
+const PDF_DEFAULT_ASPECT = 1.414  // A4 portrait fallback until a page is measured
 
 export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
   {
     pdfUrl,
     currentPage,
-    pageCount,
     visiblePages,
     zoom,
     onPageChange,
@@ -37,48 +38,54 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   },
   ref,
 ) {
-  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const onPageChangeRef = useRef(onPageChange)
-  const isScrollingRef = useRef(false)
 
   const renderedPages = visiblePages
   const displayPageCount = visiblePages.length
+  const pageWidth = Math.round(PDF_BASE_WIDTH * zoom)
+  const visibleKey = renderedPages.join(',')
 
   onPageChangeRef.current = onPageChange
 
-  const getMostVisiblePage = useCallback(() => {
+  // Virtualize the (filtered) visible pages: only the slots in/just outside the
+  // viewport mount a real <Page> canvas; every other slot is a sized placeholder.
+  // Each virtual index maps to renderedPages[index], so the filter stays intact.
+  const rowVirtualizer = useVirtualizer({
+    count: renderedPages.length,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => Math.round(pageWidth * PDF_DEFAULT_ASPECT) + PDF_PAGE_GAP,
+    overscan: 2,
+  })
+
+  // Zoom or filter changes invalidate the cached page heights — drop them back
+  // to the (zoom-scaled) estimate and let measureElement re-measure on render.
+  useEffect(() => {
+    rowVirtualizer.measure()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom, pdfUrl, visibleKey])
+
+  // The page whose virtual slot straddles the viewport's vertical centre is
+  // "current". Derived from the virtualizer's measured offsets, so it works
+  // with placeholder slots that have never been rendered.
+  const handleViewportScroll = () => {
     const root = viewportRef.current
-    if (!root) {
-      return renderedPages[0] ?? 1
+    if (!root || renderedPages.length === 0) {
+      return
     }
 
-    const rootRect = root.getBoundingClientRect()
-    let bestPage = renderedPages[0] ?? 1
-    let bestVisibleRatio = 0
-
-    renderedPages.forEach((pageNumber) => {
-      const pageElement = pageRefs.current[pageNumber]
-      if (!pageElement) {
-        return
+    const center = root.scrollTop + root.clientHeight / 2
+    for (const item of rowVirtualizer.getVirtualItems()) {
+      if (center >= item.start && center < item.start + item.size) {
+        const page = renderedPages[item.index]
+        if (page !== currentPage) {
+          onPageChangeRef.current(page)
+        }
+        break
       }
+    }
+  }
 
-      const pageRect = pageElement.getBoundingClientRect()
-      const visibleTop = Math.max(pageRect.top, rootRect.top)
-      const visibleBottom = Math.min(pageRect.bottom, rootRect.bottom)
-      const visibleHeight = Math.max(0, visibleBottom - visibleTop)
-      const visibleRatio = pageRect.height > 0 ? visibleHeight / pageRect.height : 0
-
-      if (visibleRatio > bestVisibleRatio) {
-        bestVisibleRatio = visibleRatio
-        bestPage = pageNumber
-      }
-    })
-
-    return bestPage
-  }, [renderedPages])
-
-  
   const getVisiblePageIndex = useCallback((page: number): number => {
     return renderedPages.indexOf(page)
   }, [renderedPages])
@@ -90,92 +97,17 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
 
   const virtualCurrent = getVirtualCurrentPage()
 
-  useEffect(() => {
-    const root = viewportRef.current
-    if (!root) {
-      return undefined
-    }
-
-    let scrollIdleTimer: ReturnType<typeof setTimeout> | undefined
-
-    const commitPageAfterScroll = () => {
-      isScrollingRef.current = false
-      onPageChangeRef.current(getMostVisiblePage())
-    }
-
-    const onScroll = () => {
-      isScrollingRef.current = true
-
-      if (scrollIdleTimer) {
-        clearTimeout(scrollIdleTimer)
-      }
-
-      scrollIdleTimer = setTimeout(commitPageAfterScroll, 150)
-    }
-
-    root.addEventListener('scroll', onScroll, { passive: true })
-    root.addEventListener('scrollend', commitPageAfterScroll)
-
-    return () => {
-      root.removeEventListener('scroll', onScroll)
-      root.removeEventListener('scrollend', commitPageAfterScroll)
-      if (scrollIdleTimer) {
-        clearTimeout(scrollIdleTimer)
-      }
-    }
-  }, [getMostVisiblePage, pdfUrl, displayPageCount, renderedPages])
-
-  useEffect(() => {
-    const root = viewportRef.current
-    if (!root) {
-      return undefined
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isScrollingRef.current) {
-          return
-        }
-
-        const mostVisibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
-
-        if (!mostVisibleEntry) {
-          return
-        }
-
-        const page = Number((mostVisibleEntry.target as HTMLElement).dataset.page)
-        if (!Number.isNaN(page)) {
-          onPageChangeRef.current(page)
-        }
-      },
-      {
-        root,
-        threshold: [0.35, 0.55, 0.75],
-      },
-    )
-
-    renderedPages.forEach((pageNumber) => {
-      const pageRef = pageRefs.current[pageNumber]
-      if (pageRef) {
-        observer.observe(pageRef)
-      }
-    })
-
-    return () => observer.disconnect()
-  }, [pdfUrl, pageCount, zoom, displayPageCount, renderedPages])
-
   const goToPage = useCallback(
     (page: number) => {
-      if (!renderedPages.includes(page)) {
+      const index = renderedPages.indexOf(page)
+      if (index < 0) {
         return
       }
 
       onPageChange(page)
-      pageRefs.current[page]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      rowVirtualizer.scrollToIndex(index, { align: 'start', behavior: 'smooth' })
     },
-    [onPageChange, renderedPages],
+    [onPageChange, renderedPages, rowVirtualizer],
   )
 
   useEffect(() => {
@@ -194,7 +126,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   return (
     <section className="mindocu-pdf-stage" aria-label="Dokumentansicht">
 
-      <div ref={viewportRef} className="mindocu-pdf-scrollarea">
+      <div ref={viewportRef} className="mindocu-pdf-scrollarea" onScroll={handleViewportScroll}>
         {pdfUrl && renderedPages.length === 0 ? (
           <div className="mindocu-pdf-loading">Keine Seiten für die aktuelle Filterauswahl sichtbar.</div>
         ) : pdfUrl ? (
@@ -204,25 +136,38 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
             loading={<div className="mindocu-pdf-loading">PDF wird geladen ...</div>}
             error={<div className="mindocu-pdf-loading">PDF konnte nicht geladen werden.</div>}
           >
-            {renderedPages.map((pageNumber) => {
-              return (
-                <div
-                  key={pageNumber}
-                  ref={(element) => {
-                    pageRefs.current[pageNumber] = element
-                  }}
-                  data-page={pageNumber}
-                  className="mindocu-pdf-pagewrap"
-                >
-                  <Page
-                    pageNumber={pageNumber}
-                    width={Math.round(PDF_BASE_WIDTH * zoom)}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                  />
-                </div>
-              )
-            })}
+            <div style={{ position: 'relative', width: '100%', height: rowVirtualizer.getTotalSize() }}>
+              {rowVirtualizer.getVirtualItems().map((item) => {
+                const pageNumber = renderedPages[item.index]
+                return (
+                  <div
+                    key={item.key}
+                    data-index={item.index}
+                    ref={rowVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${item.start}px)`,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      paddingBottom: PDF_PAGE_GAP,
+                    }}
+                  >
+                    <div className="mindocu-pdf-pagewrap" data-page={pageNumber} style={{ margin: 0 }}>
+                      <Page
+                        pageNumber={pageNumber}
+                        width={pageWidth}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        loading={<div style={{ width: pageWidth, height: Math.round(pageWidth * PDF_DEFAULT_ASPECT) }} />}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </Document>
         ) : (
           <div className="mindocu-pdf-loading">Kein PDF ausgewählt.</div>

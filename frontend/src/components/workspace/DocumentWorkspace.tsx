@@ -188,7 +188,6 @@ export function DocumentWorkspace() {
               key={activeDocument.id}
               pdfUrl={activeDocument.pdfUrl}
               currentPage={currentPage}
-              pageCount={pageCount}
               visiblePages={visiblePages}
               zoom={zoom}
               onPageChange={handlePageChange}
