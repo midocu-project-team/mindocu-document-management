@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Box, Button, Card, CardContent, IconButton, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
@@ -17,6 +18,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 const PDF_BASE_WIDTH = 600;
+const PDF_PAGE_GAP = 16;            // vertical gap between rendered pages (px)
+const PDF_DEFAULT_ASPECT = 1.414;   // A4 portrait fallback until a page is measured
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 
@@ -47,7 +50,6 @@ export default function PDFViewerReview({
 }: PDFViewerReviewProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
     const urlsRef = useRef<string[]>([]);
     const dragDepth = useRef(0);
 
@@ -62,6 +64,17 @@ export default function PDFViewerReview({
     const selectedPdf = selectedIndex !== null ? pdfs[selectedIndex] : null;
     const numPages = selectedPdf ? (pageCounts[selectedPdf.url] ?? 0) : 0;
     const hasRoom = pdfs.length < maxFiles;
+    const pageWidth = Math.round(PDF_BASE_WIDTH * zoom);
+
+    // Only the pages in (and just outside) the viewport are mounted as canvases;
+    // everything else is a sized placeholder slot. measureElement swaps the
+    // A4 estimate for each page's real height once it has rendered.
+    const rowVirtualizer = useVirtualizer({
+        count: numPages,
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => Math.round(pageWidth * PDF_DEFAULT_ASPECT) + PDF_PAGE_GAP,
+        overscan: 2,
+    });
 
     // Revoke every object URL we created when the component unmounts.
     useEffect(() => {
@@ -83,6 +96,18 @@ export default function PDFViewerReview({
             window.removeEventListener('drop', reset);
         };
     }, []);
+
+    // A zoom change resizes every page, so the cached heights are stale — drop
+    // them back to the (zoom-scaled) estimate and let measureElement re-measure.
+    useEffect(() => {
+        rowVirtualizer.measure();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [zoom]);
+
+    // Reset the scroll position to the top when switching to another PDF.
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ top: 0 });
+    }, [selectedPdf?.url]);
 
     function commit(updated: PdfEntry[], nextSelected: number | null) {
         setPdfs(updated);
@@ -161,7 +186,7 @@ export default function PDFViewerReview({
         const clamped = Math.max(1, Math.min(page, numPages));
         setCurrentPage(clamped);
         setInputValue(String(clamped));
-        pageRefs.current[clamped - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        rowVirtualizer.scrollToIndex(clamped - 1, { align: 'start', behavior: 'smooth' });
     }
 
     function handleInputCommit() {
@@ -172,19 +197,17 @@ export default function PDFViewerReview({
 
     function handleScroll() {
         const container = scrollRef.current;
-        if (!container) return;
-        const rootRect = container.getBoundingClientRect();
+        if (!container || numPages === 0) return;
+        // The page whose slot straddles the viewport's vertical centre is "current".
+        const center = container.scrollTop + container.clientHeight / 2;
+        const items = rowVirtualizer.getVirtualItems();
         let bestPage = currentPage;
-        let bestVisible = 0;
-        pageRefs.current.slice(0, numPages).forEach((ref, i) => {
-            if (!ref) return;
-            const rect = ref.getBoundingClientRect();
-            const visible = Math.min(rect.bottom, rootRect.bottom) - Math.max(rect.top, rootRect.top);
-            if (visible > bestVisible) {
-                bestVisible = visible;
-                bestPage = i + 1;
+        for (const item of items) {
+            if (center >= item.start && center < item.start + item.size) {
+                bestPage = item.index + 1;
+                break;
             }
-        });
+        }
         if (bestPage !== currentPage) {
             setCurrentPage(bestPage);
             setInputValue(String(bestPage));
@@ -294,7 +317,7 @@ export default function PDFViewerReview({
                                 <Box
                                     ref={scrollRef}
                                     onScroll={handleScroll}
-                                    sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 3, px: 2 }}
+                                    sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 3, px: 2 }}
                                 >
                                     <Document
                                         file={selectedPdf.url}
@@ -306,20 +329,35 @@ export default function PDFViewerReview({
                                         loading={<Typography sx={{ color: 'text.secondary', py: 6 }}>PDF wird geladen …</Typography>}
                                         error={<Typography sx={{ color: 'error.main', py: 6 }}>PDF konnte nicht geladen werden.</Typography>}
                                     >
-                                        {Array.from({ length: numPages }, (_, i) => (
-                                            <Box
-                                                key={i}
-                                                ref={(el: HTMLDivElement | null) => { pageRefs.current[i] = el; }}
-                                                sx={{ borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}
-                                            >
-                                                <Page
-                                                    pageNumber={i + 1}
-                                                    width={Math.round(PDF_BASE_WIDTH * zoom)}
-                                                    renderTextLayer={false}
-                                                    renderAnnotationLayer={false}
-                                                />
-                                            </Box>
-                                        ))}
+                                        <Box sx={{ position: 'relative', width: '100%', height: rowVirtualizer.getTotalSize() }}>
+                                            {rowVirtualizer.getVirtualItems().map((item) => (
+                                                <Box
+                                                    key={item.key}
+                                                    data-index={item.index}
+                                                    ref={rowVirtualizer.measureElement}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        width: '100%',
+                                                        transform: `translateY(${item.start}px)`,
+                                                        display: 'flex',
+                                                        justifyContent: 'center',
+                                                        pb: `${PDF_PAGE_GAP}px`,
+                                                    }}
+                                                >
+                                                    <Box sx={{ borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', width: pageWidth }}>
+                                                        <Page
+                                                            pageNumber={item.index + 1}
+                                                            width={pageWidth}
+                                                            renderTextLayer={false}
+                                                            renderAnnotationLayer={false}
+                                                            loading={<Box sx={{ width: pageWidth, height: Math.round(pageWidth * PDF_DEFAULT_ASPECT) }} />}
+                                                        />
+                                                    </Box>
+                                                </Box>
+                                            ))}
+                                        </Box>
                                     </Document>
                                 </Box>
 
