@@ -41,6 +41,19 @@ def create_app(settings: Settings | None = None, job_queue: JobQueue | None = No
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        # Cross-origin JS (pdf.js) can only read these response headers if they
+        # are explicitly exposed. Accept-Ranges/Content-Range let pdf.js detect
+        # range support and load PDFs progressively instead of all-at-once. A
+        # "*" wildcard is ignored here because allow_credentials=True forces an
+        # explicit list.
+        expose_headers=[
+            "Accept-Ranges",
+            "Content-Range",
+            "Content-Length",
+            "Content-Disposition",
+            "ETag",
+            "Last-Modified",
+        ],
     )
 
     app.state.settings = settings
