@@ -211,7 +211,10 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 284px minmax(0, 1fr) var(--mindocu-right-sidebar-width);
+  /* Widths come from custom properties set inline by DocumentWorkspace so the
+     compact @media rules below can override the whole template — an inline
+     grid-template-columns would beat any media query. */
+  grid-template-columns: var(--mindocu-left-w, 284px) minmax(0, 1fr) var(--mindocu-right-w, 380px);
   /* prevent outer scrolling inside the grid; keep inner areas responsible for their own overflow */
   overflow: hidden;
 }
@@ -1060,39 +1063,76 @@ body.mindocu-resizing * {
   font-weight: 700;
 }
 
-@media (max-width: 1280px) {
+/* ===================================================================
+   Compact layout (≤ 1100px). The grid collapses to a single PDF column
+   and both sidebars turn into off-canvas drawers that slide in over the
+   PDF. Open/closed is driven by the same .is-collapsed toggle as desktop;
+   here it animates a translate instead of zeroing the grid track. The
+   matching breakpoint lives in DocumentWorkspace (COMPACT_QUERY), which
+   also auto-closes the drawers and renders the backdrop.
+   =================================================================== */
+@media (max-width: 1100px) {
   .mindocu-workspace-grid {
-    grid-template-columns: 256px minmax(0, 1fr) calc(var(--mindocu-right-sidebar-width) - 20px);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mindocu-grid-pane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 35;
+    width: min(360px, 86vw);
+    box-shadow: var(--mindocu-shadow);
+    transition: transform 220ms ease;
+  }
+
+  .mindocu-grid-pane--left {
+    left: 0;
+    transform: translateX(0);
+  }
+
+  .mindocu-grid-pane--right {
+    right: 0;
+    left: auto;
+    transform: translateX(0);
+  }
+
+  /* A closed drawer keeps its width and slides off its own edge (rather than
+     the desktop width:0/opacity:0), so opening and closing animate. */
+  .mindocu-grid-pane.is-collapsed {
+    width: min(360px, 86vw);
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  .mindocu-grid-pane--left.is-collapsed {
+    transform: translateX(-100%);
+  }
+
+  .mindocu-grid-pane--right.is-collapsed {
+    transform: translateX(100%);
+  }
+
+  /* Dragging is meaningless for overlay drawers. */
+  .mindocu-resize-handle {
+    display: none;
   }
 }
 
-@media (max-width: 1120px) {
-  .mindocu-workspace-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .mindocu-inner-sidebar--right {
-    border-left: 0;
-    border-top: 1px solid rgba(210, 215, 223, 0.84);
-    width: 110px;
-  }
-
-  .mindocu-inner-sidebar--left {
-    border-bottom: 1px solid rgba(210, 215, 223, 0.84);
-    width: 78px;
-  }
-
-  .mindocu-pdf-stage {
-    min-height: 62vh;
-    background: var(--mindocu-background-pdf);
-  }
+/* Dimmed backdrop behind an open drawer; clicking it closes the drawers
+   (handled in DocumentWorkspace). Only rendered in the compact layout. */
+.mindocu-workspace-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+  border: 0;
+  background: rgba(16, 24, 40, 0.32);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .mindocu-app-main {
     margin-left: 78px;
   }
-
 
   .mindocu-sidebar-button,
   .mindocu-sidebar-brand {
@@ -1100,14 +1140,12 @@ body.mindocu-resizing * {
     height: 46px;
   }
 
-  .mindocu-center-toolbarrow {
-    flex-direction: column;
-    align-items: stretch;
+  .mindocu-grid-pane {
+    width: min(340px, 92vw);
   }
 
-  .mindocu-toolbar--view {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+  .mindocu-grid-pane.is-collapsed {
+    width: min(340px, 92vw);
   }
 }
 
