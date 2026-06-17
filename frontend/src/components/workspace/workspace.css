@@ -207,12 +207,64 @@
 }
 
 .mindocu-workspace-grid {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: 284px minmax(0, 1fr) var(--mindocu-right-sidebar-width);
   /* prevent outer scrolling inside the grid; keep inner areas responsible for their own overflow */
   overflow: hidden;
+}
+
+/* VSCode-style drag handles. Positioned over the grid at the column boundary
+   (left: width / right: width) so the hit area sits on the center side, clear
+   of the sidebar's own scrollbar. The visible 2px line hugs the boundary. */
+.mindocu-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 25;
+  display: flex;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.mindocu-resize-handle--left {
+  justify-content: flex-start;
+}
+
+.mindocu-resize-handle--right {
+  justify-content: flex-end;
+}
+
+.mindocu-resize-handle::before {
+  content: '';
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.mindocu-resize-handle:hover::before,
+.mindocu-resize-handle:focus-visible::before,
+.mindocu-resize-handle.is-dragging::before {
+  background: var(--mindocu-blue);
+}
+
+.mindocu-resize-handle:focus-visible {
+  outline: none;
+}
+
+/* While dragging, keep the resize cursor everywhere and suppress selection. */
+body.mindocu-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.mindocu-resizing * {
+  cursor: col-resize !important;
 }
 
 .mindocu-grid-pane {
