@@ -22,6 +22,12 @@ const PDF_PAGE_GAP = 16;            // vertical gap between rendered pages (px)
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 
+// Tells pdf.js where to fetch its WASM decoders (served from /wasm/ by the
+// pdfjsWasm Vite plugin). Without this, JPEG2000-encoded scan pages render blank
+// ("JpxError: OpenJPEG failed to initialize"). Module-level constant so the
+// reference stays stable — a fresh object would make react-pdf reload the PDF.
+const PDF_OPTIONS = { wasmUrl: '/wasm/' };
+
 interface PdfEntry {
     name: string;
     url: string;
@@ -306,6 +312,7 @@ export default function PDFViewerReview({
                                 >
                                     <Document
                                         file={selectedPdf.url}
+                                        options={PDF_OPTIONS}
                                         onLoadSuccess={({ numPages }) => {
                                             setPageCounts((prev) => ({ ...prev, [selectedPdf.url]: numPages }));
                                             setCurrentPage(1);

@@ -24,6 +24,12 @@ type PdfViewportProps = {
 const PDF_BASE_WIDTH = 720
 const PDF_PAGE_GAP = 18            // vertical gap between rendered pages (px)
 
+// Tells pdf.js where to fetch its WASM decoders (served from /wasm/ by the
+// pdfjsWasm Vite plugin). Without this, JPEG2000-encoded scan pages render
+// blank ("JpxError: OpenJPEG failed to initialize"). Module-level constant so
+// the reference stays stable — a fresh object would make react-pdf reload the PDF.
+const PDF_OPTIONS = { wasmUrl: '/wasm/' }
+
 export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
   {
     pdfUrl,
@@ -120,6 +126,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
           // Only the inner content switches between the page list and the empty hint.
           <Document
             file={pdfUrl}
+            options={PDF_OPTIONS}
             onLoadSuccess={handlePdfLoad}
             loading={<div className="mindocu-pdf-loading">PDF wird geladen ...</div>}
             error={<div className="mindocu-pdf-loading">PDF konnte nicht geladen werden.</div>}
