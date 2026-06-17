@@ -22,4 +22,12 @@ def get_document_pdf(document_id: str, service: DocumentServiceDep) -> FileRespo
     row, path = service.get_pdf(document_id)
     if not path.exists():
         raise DocumentNotFoundError(document_id)
-    return FileResponse(path, media_type="application/pdf", filename=row.file_name)
+    # The stored PDF for a given (UUID) document_id never changes, so let the
+    # browser keep it without revalidating. "private" keeps it out of shared
+    # caches (CDNs/proxies) since case files are sensitive.
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=row.file_name,
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
+    )
