@@ -114,15 +114,19 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     <section className="mindocu-pdf-stage" aria-label="Dokumentansicht">
 
       <div ref={viewportRef} className="mindocu-pdf-scrollarea" onScroll={handleViewportScroll}>
-        {pdfUrl && renderedPages.length === 0 ? (
-          <div className="mindocu-pdf-loading">Keine Seiten für die aktuelle Filterauswahl sichtbar.</div>
-        ) : pdfUrl ? (
+        {pdfUrl ? (
+          // Keep <Document> mounted across filter changes: unmounting it would make
+          // react-pdf reload (and re-fetch/re-parse) the whole PDF when pages reappear.
+          // Only the inner content switches between the page list and the empty hint.
           <Document
             file={pdfUrl}
             onLoadSuccess={handlePdfLoad}
             loading={<div className="mindocu-pdf-loading">PDF wird geladen ...</div>}
             error={<div className="mindocu-pdf-loading">PDF konnte nicht geladen werden.</div>}
           >
+            {renderedPages.length === 0 ? (
+              <div className="mindocu-pdf-loading">Keine Seiten für die aktuelle Filterauswahl sichtbar.</div>
+            ) : (
             <div style={{ position: 'relative', width: '100%', height: totalSize }}>
               {virtualItems.map((item) => {
                 const pageNumber = renderedPages[item.index]
@@ -155,6 +159,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
                 )
               })}
             </div>
+            )}
           </Document>
         ) : (
           <div className="mindocu-pdf-loading">Kein PDF ausgewählt.</div>
