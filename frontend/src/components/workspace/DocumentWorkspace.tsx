@@ -12,9 +12,13 @@ import {
   getVisiblePages,
 } from './segmentUtils'
 import { SEGMENT_SUMMARY_FALLBACK, SEGMENT_TITLE_FALLBACK, toWorkspaceDocument } from './workspaceTypes'
+import { useResizableWidth } from './useResizableWidth'
 import { useCaseDetail } from '../../api/hooks'
 
 const NO_SEGMENTS: Segment[] = []
+
+const LEFT_SIDEBAR = { initial: 284, min: 220, max: 560, storageKey: 'mindocu:left-sidebar-width' }
+const RIGHT_SIDEBAR = { initial: 380, min: 300, max: 640, storageKey: 'mindocu:right-sidebar-width' }
 
 export function DocumentWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -33,6 +37,9 @@ export function DocumentWorkspace() {
   const [showRelevantSegments, setShowRelevantSegments] = useState(true)
   const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false)
   const pdfViewportRef = useRef<PdfViewportHandle>(null)
+
+  const leftResize = useResizableWidth(LEFT_SIDEBAR.initial, { ...LEFT_SIDEBAR, edge: 'left' })
+  const rightResize = useResizableWidth(RIGHT_SIDEBAR.initial, { ...RIGHT_SIDEBAR, edge: 'right' })
 
   const workspaceDocuments = useMemo(
     () => (caseDetail?.documents ?? []).map(toWorkspaceDocument),
@@ -102,7 +109,9 @@ export function DocumentWorkspace() {
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value))
 
   const workspaceGridStyle = {
-    gridTemplateColumns: `${leftSidebarOpen ? '284px' : '0px'} minmax(0, 1fr) ${rightSidebarOpen ? '380px' : '0px'}`,
+    gridTemplateColumns: `${leftSidebarOpen ? `${leftResize.width}px` : '0px'} minmax(0, 1fr) ${
+      rightSidebarOpen ? `${rightResize.width}px` : '0px'
+    }`,
   } as const
 
   const toggleShowRelevant = () => {
@@ -149,6 +158,34 @@ export function DocumentWorkspace() {
         />
 
         <div className="mindocu-workspace-grid" style={workspaceGridStyle}>
+          {leftSidebarOpen ? (
+            <div
+              className={`mindocu-resize-handle mindocu-resize-handle--left${leftResize.isDragging ? ' is-dragging' : ''}`}
+              style={{ left: leftResize.width }}
+              onPointerDown={leftResize.onPointerDown}
+              onKeyDown={leftResize.onKeyDown}
+              onDoubleClick={leftResize.reset}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Linke Seitenleiste verbreitern oder verschmälern"
+              tabIndex={0}
+            />
+          ) : null}
+
+          {rightSidebarOpen ? (
+            <div
+              className={`mindocu-resize-handle mindocu-resize-handle--right${rightResize.isDragging ? ' is-dragging' : ''}`}
+              style={{ right: rightResize.width }}
+              onPointerDown={rightResize.onPointerDown}
+              onKeyDown={rightResize.onKeyDown}
+              onDoubleClick={rightResize.reset}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Rechte Seitenleiste verbreitern oder verschmälern"
+              tabIndex={0}
+            />
+          ) : null}
+
           <div className={`mindocu-grid-pane${leftSidebarOpen ? '' : ' is-collapsed'}`} aria-hidden={!leftSidebarOpen}>
             <InnerSidebarLeft
               segments={activeSegments}
