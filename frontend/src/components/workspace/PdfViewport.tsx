@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '../../hooks/usePdfPageVirtualizer'
 import { getNextVisiblePage, getPreviousVisiblePage } from './segmentUtils'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
@@ -23,7 +23,6 @@ type PdfViewportProps = {
 
 const PDF_BASE_WIDTH = 720
 const PDF_PAGE_GAP = 18            // vertical gap between rendered pages (px)
-const PDF_DEFAULT_ASPECT = 1.414  // A4 portrait fallback until a page is measured
 
 export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
   {
@@ -51,38 +50,26 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   // Virtualize the (filtered) visible pages: only the slots in/just outside the
   // viewport mount a real <Page> canvas; every other slot is a sized placeholder.
   // Each virtual index maps to renderedPages[index], so the filter stays intact.
-  const rowVirtualizer = useVirtualizer({
-    count: renderedPages.length,
-    getScrollElement: () => viewportRef.current,
-    estimateSize: () => Math.round(pageWidth * PDF_DEFAULT_ASPECT) + PDF_PAGE_GAP,
-    overscan: 2,
-  })
-
-  // Zoom or filter changes invalidate the cached page heights — drop them back
-  // to the (zoom-scaled) estimate and let measureElement re-measure on render.
-  useEffect(() => {
-    rowVirtualizer.measure()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, pdfUrl, visibleKey])
+  // Re-measure when zoom, document or filter changes (all resize/reorder pages).
+  const { virtualItems, totalSize, measureElement, scrollToIndex, getCenteredIndex } =
+    usePdfPageVirtualizer({
+      scrollRef: viewportRef,
+      count: renderedPages.length,
+      pageWidth,
+      pageGap: PDF_PAGE_GAP,
+      resetKey: `${zoom}|${pdfUrl ?? ''}|${visibleKey}`,
+    })
 
   // The page whose virtual slot straddles the viewport's vertical centre is
-  // "current". Derived from the virtualizer's measured offsets, so it works
-  // with placeholder slots that have never been rendered.
+  // "current". Works with placeholder slots that have never been rendered.
   const handleViewportScroll = () => {
-    const root = viewportRef.current
-    if (!root || renderedPages.length === 0) {
+    const index = getCenteredIndex()
+    if (index === null) {
       return
     }
-
-    const center = root.scrollTop + root.clientHeight / 2
-    for (const item of rowVirtualizer.getVirtualItems()) {
-      if (center >= item.start && center < item.start + item.size) {
-        const page = renderedPages[item.index]
-        if (page !== currentPage) {
-          onPageChangeRef.current(page)
-        }
-        break
-      }
+    const page = renderedPages[index]
+    if (page !== currentPage) {
+      onPageChangeRef.current(page)
     }
   }
 
@@ -105,9 +92,9 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
       }
 
       onPageChange(page)
-      rowVirtualizer.scrollToIndex(index, { align: 'start', behavior: 'smooth' })
+      scrollToIndex(index)
     },
-    [onPageChange, renderedPages, rowVirtualizer],
+    [onPageChange, renderedPages, scrollToIndex],
   )
 
   useEffect(() => {
@@ -136,14 +123,14 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
             loading={<div className="mindocu-pdf-loading">PDF wird geladen ...</div>}
             error={<div className="mindocu-pdf-loading">PDF konnte nicht geladen werden.</div>}
           >
-            <div style={{ position: 'relative', width: '100%', height: rowVirtualizer.getTotalSize() }}>
-              {rowVirtualizer.getVirtualItems().map((item) => {
+            <div style={{ position: 'relative', width: '100%', height: totalSize }}>
+              {virtualItems.map((item) => {
                 const pageNumber = renderedPages[item.index]
                 return (
                   <div
                     key={item.key}
                     data-index={item.index}
-                    ref={rowVirtualizer.measureElement}
+                    ref={measureElement}
                     style={{
                       position: 'absolute',
                       top: 0,
