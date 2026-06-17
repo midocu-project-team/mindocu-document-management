@@ -11,7 +11,7 @@ import {
   getNearestVisiblePage,
   getVisiblePages,
 } from './segmentUtils'
-import { toWorkspaceDocument } from './workspaceTypes'
+import { SEGMENT_SUMMARY_FALLBACK, SEGMENT_TITLE_FALLBACK, toWorkspaceDocument } from './workspaceTypes'
 import { useCaseDetail } from '../../api/hooks'
 
 const NO_SEGMENTS: Segment[] = []
@@ -51,8 +51,8 @@ export function DocumentWorkspace() {
   const pageCount = reportedPageCount ?? activeDocument?.totalPages ?? 1
 
   const visiblePages = useMemo(
-    () => getVisiblePages(activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments),
-    [activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments],
+    () => getVisiblePages(activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments, searchQuery),
+    [activeSegments, pageCount, showRelevantSegments, showIrrelevantSegments, searchQuery],
   )
 
   useEffect(() => {
@@ -198,8 +198,8 @@ export function DocumentWorkspace() {
             <InnerSidebarRight
               activeTab={rightTab}
               onTabChange={setRightTab}
-              segmentTitle={activeSegment?.title ?? ''}
-              summary={activeSegment?.summary ?? ''}
+              segmentTitle={activeSegment ? activeSegment.title ?? SEGMENT_TITLE_FALLBACK : ''}
+              summary={activeSegment ? activeSegment.summary ?? SEGMENT_SUMMARY_FALLBACK : ''}
             />
           </div>
         </div>

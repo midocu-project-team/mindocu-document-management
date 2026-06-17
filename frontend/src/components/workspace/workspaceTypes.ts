@@ -11,12 +11,20 @@ export type WorkspaceDocument = {
   segments: Segment[]
 }
 
+/**
+ * Display fallbacks for segments the enrichment stage left without title/summary.
+ * These are a *view* concern only — the model keeps `null` (see `Segment`), so the
+ * absence of a title is distinguishable from a segment literally named "Ohne Titel".
+ */
+export const SEGMENT_TITLE_FALLBACK = 'Ohne Titel'
+export const SEGMENT_SUMMARY_FALLBACK = 'Keine Zusammenfassung verfügbar.'
+
 /** Map an API segment summary to the workspace view model (1:1 page numbers). */
 export function toSegment(summary: SegmentSummary): Segment {
   return {
     id: summary.segment_id,
-    title: summary.title ?? 'Ohne Titel',
-    summary: summary.summary ?? 'Keine Zusammenfassung verfügbar.',
+    title: summary.title,
+    summary: summary.summary,
     relevant: summary.relevance,
     start_page: summary.start_page,
     end_page: summary.end_page,
