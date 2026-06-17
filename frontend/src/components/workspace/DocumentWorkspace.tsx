@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { Topbar } from './Topbar'
@@ -13,6 +13,7 @@ import {
 } from './segmentUtils'
 import { SEGMENT_SUMMARY_FALLBACK, SEGMENT_TITLE_FALLBACK, toWorkspaceDocument } from './workspaceTypes'
 import { useResizableWidth } from './useResizableWidth'
+import { useMediaQuery } from './useMediaQuery'
 import { useCaseDetail } from '../../api/hooks'
 
 const NO_SEGMENTS: Segment[] = []
@@ -20,13 +21,22 @@ const NO_SEGMENTS: Segment[] = []
 const LEFT_SIDEBAR = { initial: 284, min: 220, max: 560, storageKey: 'mindocu:left-sidebar-width' }
 const RIGHT_SIDEBAR = { initial: 380, min: 300, max: 640, storageKey: 'mindocu:right-sidebar-width' }
 
+// Below this width the sidebars stop being resizable grid columns and become
+// off-canvas drawers that slide over the PDF (see workspace.css). Keep the
+// value in sync with the matching @media breakpoint there.
+const COMPACT_QUERY = '(max-width: 1100px)'
+
 export function DocumentWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId)
 
+  const isCompact = useMediaQuery(COMPACT_QUERY)
+
   const [rightTab, setRightTab] = useState<'Zusammenfassung' | 'Chat' | 'Chat Sessions'>('Zusammenfassung')
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+  // Start closed in the compact (drawer) layout so a drawer never covers the
+  // PDF on first paint; start open on desktop.
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(!isCompact)
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(!isCompact)
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'comment'>('select')
@@ -40,6 +50,17 @@ export function DocumentWorkspace() {
 
   const leftResize = useResizableWidth(LEFT_SIDEBAR.initial, { ...LEFT_SIDEBAR, edge: 'left' })
   const rightResize = useResizableWidth(RIGHT_SIDEBAR.initial, { ...RIGHT_SIDEBAR, edge: 'right' })
+
+  // Crossing the compact breakpoint at runtime re-resets the sidebars (closed
+  // in the drawer layout, open on desktop). Done during render via a
+  // previous-value guard rather than an effect, so it applies before paint
+  // without a cascading re-render.
+  const [wasCompact, setWasCompact] = useState(isCompact)
+  if (wasCompact !== isCompact) {
+    setWasCompact(isCompact)
+    setLeftSidebarOpen(!isCompact)
+    setRightSidebarOpen(!isCompact)
+  }
 
   const workspaceDocuments = useMemo(
     () => (caseDetail?.documents ?? []).map(toWorkspaceDocument),
@@ -108,11 +129,21 @@ export function DocumentWorkspace() {
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value))
 
+  // The sidebar widths are exposed as CSS custom properties (not a direct
+  // grid-template-columns) so the @media(compact) rules in workspace.css can
+  // override the template wholesale — an inline grid-template-columns would
+  // win over any media query and defeat the drawer layout. On desktop a closed
+  // sidebar collapses its track to 0; in compact mode the panes leave the flow
+  // entirely (absolute drawers), so the track width no longer matters.
   const workspaceGridStyle = {
-    gridTemplateColumns: `${leftSidebarOpen ? `${leftResize.width}px` : '0px'} minmax(0, 1fr) ${
-      rightSidebarOpen ? `${rightResize.width}px` : '0px'
-    }`,
-  } as const
+    '--mindocu-left-w': leftSidebarOpen ? `${leftResize.width}px` : '0px',
+    '--mindocu-right-w': rightSidebarOpen ? `${rightResize.width}px` : '0px',
+  } as CSSProperties
+
+  const closeSidebars = () => {
+    setLeftSidebarOpen(false)
+    setRightSidebarOpen(false)
+  }
 
   const toggleShowRelevant = () => {
     setShowRelevantSegments((current) => {
@@ -158,7 +189,7 @@ export function DocumentWorkspace() {
         />
 
         <div className="mindocu-workspace-grid" style={workspaceGridStyle}>
-          {leftSidebarOpen ? (
+          {leftSidebarOpen && !isCompact ? (
             <div
               className={`mindocu-resize-handle mindocu-resize-handle--left${leftResize.isDragging ? ' is-dragging' : ''}`}
               style={{ left: leftResize.width }}
@@ -172,7 +203,7 @@ export function DocumentWorkspace() {
             />
           ) : null}
 
-          {rightSidebarOpen ? (
+          {rightSidebarOpen && !isCompact ? (
             <div
               className={`mindocu-resize-handle mindocu-resize-handle--right${rightResize.isDragging ? ' is-dragging' : ''}`}
               style={{ right: rightResize.width }}
@@ -186,7 +217,14 @@ export function DocumentWorkspace() {
             />
           ) : null}
 
-          <div className={`mindocu-grid-pane${leftSidebarOpen ? '' : ' is-collapsed'}`} aria-hidden={!leftSidebarOpen}>
+          {isCompact && (leftSidebarOpen || rightSidebarOpen) ? (
+            <div className="mindocu-workspace-backdrop" onClick={closeSidebars} aria-hidden="true" />
+          ) : null}
+
+          <div
+            className={`mindocu-grid-pane mindocu-grid-pane--left${leftSidebarOpen ? '' : ' is-collapsed'}`}
+            aria-hidden={!leftSidebarOpen}
+          >
             <InnerSidebarLeft
               segments={activeSegments}
               selectedSegmentIndex={selectedSegmentIndex}
@@ -231,7 +269,10 @@ export function DocumentWorkspace() {
             />
           </main>
 
-          <div className={`mindocu-grid-pane${rightSidebarOpen ? '' : ' is-collapsed'}`} aria-hidden={!rightSidebarOpen}>
+          <div
+            className={`mindocu-grid-pane mindocu-grid-pane--right${rightSidebarOpen ? '' : ' is-collapsed'}`}
+            aria-hidden={!rightSidebarOpen}
+          >
             <InnerSidebarRight
               activeTab={rightTab}
               onTabChange={setRightTab}
