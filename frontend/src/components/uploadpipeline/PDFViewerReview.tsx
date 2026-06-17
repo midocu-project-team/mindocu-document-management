@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { Box, Button, Card, CardContent, IconButton, Tooltip, Typography } from '@mui/material';
+import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '../../hooks/usePdfPageVirtualizer';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -19,7 +19,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const PDF_BASE_WIDTH = 600;
 const PDF_PAGE_GAP = 16;            // vertical gap between rendered pages (px)
-const PDF_DEFAULT_ASPECT = 1.414;   // A4 portrait fallback until a page is measured
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 
@@ -66,15 +65,16 @@ export default function PDFViewerReview({
     const hasRoom = pdfs.length < maxFiles;
     const pageWidth = Math.round(PDF_BASE_WIDTH * zoom);
 
-    // Only the pages in (and just outside) the viewport are mounted as canvases;
-    // everything else is a sized placeholder slot. measureElement swaps the
-    // A4 estimate for each page's real height once it has rendered.
-    const rowVirtualizer = useVirtualizer({
-        count: numPages,
-        getScrollElement: () => scrollRef.current,
-        estimateSize: () => Math.round(pageWidth * PDF_DEFAULT_ASPECT) + PDF_PAGE_GAP,
-        overscan: 2,
-    });
+    // Mount only the pages in/just outside the viewport. Re-measure when the
+    // zoom or the selected document changes (both resize the page slots).
+    const { virtualItems, totalSize, measureElement, scrollToIndex, getCenteredIndex } =
+        usePdfPageVirtualizer({
+            scrollRef,
+            count: numPages,
+            pageWidth,
+            pageGap: PDF_PAGE_GAP,
+            resetKey: `${zoom}|${selectedPdf?.url ?? ''}`,
+        });
 
     // Revoke every object URL we created when the component unmounts.
     useEffect(() => {
@@ -96,13 +96,6 @@ export default function PDFViewerReview({
             window.removeEventListener('drop', reset);
         };
     }, []);
-
-    // A zoom change resizes every page, so the cached heights are stale — drop
-    // them back to the (zoom-scaled) estimate and let measureElement re-measure.
-    useEffect(() => {
-        rowVirtualizer.measure();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [zoom]);
 
     // Reset the scroll position to the top when switching to another PDF.
     useEffect(() => {
@@ -186,7 +179,7 @@ export default function PDFViewerReview({
         const clamped = Math.max(1, Math.min(page, numPages));
         setCurrentPage(clamped);
         setInputValue(String(clamped));
-        rowVirtualizer.scrollToIndex(clamped - 1, { align: 'start', behavior: 'smooth' });
+        scrollToIndex(clamped - 1);
     }
 
     function handleInputCommit() {
@@ -196,18 +189,10 @@ export default function PDFViewerReview({
     }
 
     function handleScroll() {
-        const container = scrollRef.current;
-        if (!container || numPages === 0) return;
         // The page whose slot straddles the viewport's vertical centre is "current".
-        const center = container.scrollTop + container.clientHeight / 2;
-        const items = rowVirtualizer.getVirtualItems();
-        let bestPage = currentPage;
-        for (const item of items) {
-            if (center >= item.start && center < item.start + item.size) {
-                bestPage = item.index + 1;
-                break;
-            }
-        }
+        const centeredIndex = getCenteredIndex();
+        if (centeredIndex === null) return;
+        const bestPage = centeredIndex + 1;
         if (bestPage !== currentPage) {
             setCurrentPage(bestPage);
             setInputValue(String(bestPage));
@@ -329,12 +314,12 @@ export default function PDFViewerReview({
                                         loading={<Typography sx={{ color: 'text.secondary', py: 6 }}>PDF wird geladen …</Typography>}
                                         error={<Typography sx={{ color: 'error.main', py: 6 }}>PDF konnte nicht geladen werden.</Typography>}
                                     >
-                                        <Box sx={{ position: 'relative', width: '100%', height: rowVirtualizer.getTotalSize() }}>
-                                            {rowVirtualizer.getVirtualItems().map((item) => (
+                                        <Box sx={{ position: 'relative', width: '100%', height: totalSize }}>
+                                            {virtualItems.map((item) => (
                                                 <Box
                                                     key={item.key}
                                                     data-index={item.index}
-                                                    ref={rowVirtualizer.measureElement}
+                                                    ref={measureElement}
                                                     sx={{
                                                         position: 'absolute',
                                                         top: 0,
