@@ -23,9 +23,10 @@ from pipeline import RelevanceKeywords
 # Default relevance keyword set, mirroring tests/evaluation/default.yaml:
 # "Verfügung" marks a segment relevant; the rest mark it irrelevant.
 DEFAULT_KEYWORDS = RelevanceKeywords(
-    relevant=["Verfügung"],
+    relevant=["Verfügung", "Gesprächsprotokoll"],
     irrelevant=[
         "Prüfvermerk",
+        "Vermerk",
         "Zählblatt",
         "Herkunftsnachweis",
         "Übermittlung",
