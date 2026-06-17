@@ -13,8 +13,6 @@ export type Segment = {
 }
 
 type InnerSidebarLeftProps = {
-  activeTab: 'Segmente' | 'Suche'
-  onTabChange: (tab: 'Segmente' | 'Suche') => void
   segments: Segment[]
   selectedSegmentIndex: number
   onSelectSegment: (index: number) => void
@@ -28,8 +26,6 @@ type InnerSidebarLeftProps = {
 }
 
 export function InnerSidebarLeft({
-  activeTab,
-  onTabChange,
   segments,
   selectedSegmentIndex,
   onSelectSegment,
@@ -51,7 +47,7 @@ export function InnerSidebarLeft({
 
     const activeCard = list.querySelector<HTMLElement>('.mindocu-segment-card.is-active')
     activeCard?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedSegmentIndex, activeTab])
+  }, [selectedSegmentIndex])
 
   const filteredSegments = segments.filter((segment) => {
     if (!isSegmentVisible(segment, showRelevantSegments, showIrrelevantSegments)) {
@@ -64,36 +60,8 @@ export function InnerSidebarLeft({
 
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--left">
-      <div className="mindocu-inner-tabs" role="tablist" aria-label="Dokumentnavigation">
-        <button
-          type="button"
-          className={`mindocu-inner-tab${activeTab === 'Segmente' ? ' is-active' : ''}`}
-          onClick={() => onTabChange('Segmente')}
-        >
-          <span>Segmente</span>
-        </button>
-        <button
-          type="button"
-          className={`mindocu-inner-tab${activeTab === 'Suche' ? ' is-active' : ''}`}
-          onClick={() => onTabChange('Suche')}
-        >
-          <span>Suche</span>
-        </button>
-      </div>
-
-      {activeTab === 'Suche' ? (
-        <div className="mindocu-inner-panel">
-          <SearchToolbar
-            query={query}
-            onQueryChange={onQueryChange}
-            onClear={onClearQuery}
-            resultCount={filteredSegments.length}
-          />
-        </div>
-      ) : null}
-
-      {activeTab === 'Segmente' ? (
-        <div className="mindocu-inner-panel">
+      <div className="mindocu-inner-panel">
+        <div className="mindocu-leftbar-toolbar">
           <SegmentFilterDropdown
             showRelevantSegments={showRelevantSegments}
             showIrrelevantSegments={showIrrelevantSegments}
@@ -101,8 +69,16 @@ export function InnerSidebarLeft({
             onToggleShowIrrelevantSegments={onToggleShowIrrelevantSegments}
           />
 
-          <div ref={segmentListRef} className="mindocu-segment-list" aria-label="Segmentliste">
-            {filteredSegments.map((segment) => {
+          <SearchToolbar
+            query={query}
+            onQueryChange={onQueryChange}
+            onClear={onClearQuery}
+            resultCount={filteredSegments.length}
+          />
+        </div>
+
+        <div ref={segmentListRef} className="mindocu-segment-list" aria-label="Segmentliste">
+          {filteredSegments.map((segment) => {
               const segmentIndex = segments.findIndex((candidate) => candidate.id === segment.id)
               const isSelected = segmentIndex === selectedSegmentIndex
 
@@ -124,9 +100,8 @@ export function InnerSidebarLeft({
                 </button>
               )
             })}
-          </div>
         </div>
-      ) : null}
+      </div>
     </aside>
   )
 }

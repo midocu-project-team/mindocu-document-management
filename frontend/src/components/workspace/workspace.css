@@ -321,25 +321,55 @@
   margin-top: 4px;
 }
 
-.mindocu-searchbar {
+/* Header row of the left sidebar: segment filter on the left, search field on the right. */
+.mindocu-leftbar-toolbar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
+.mindocu-leftbar-toolbar .mindocu-segment-filter {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.mindocu-leftbar-toolbar .mindocu-segment-filter-trigger {
+  min-height: 38px;
+  border-radius: 12px;
+}
+
+.mindocu-searchbar {
+  flex: 1;
+  min-width: 0;
+}
+
 .mindocu-searchbar-inputwrap {
-  min-height: 42px;
-  border-radius: 14px;
+  min-height: 38px;
+  border-radius: 12px;
   border: 1px solid rgba(186, 192, 203, 0.9);
   background: rgba(255, 255, 255, 0.92);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 0 10px;
+  font-size: 0.7rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.mindocu-searchbar-inputwrap:focus-within {
+  border-color: var(--mindocu-blue-dark);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(51, 72, 201, 0.11);
+}
+
+.mindocu-searchbar-icon {
+  flex-shrink: 0;
+  color: var(--mindocu-muted);
 }
 
 .mindocu-searchbar-input {
   flex: 1;
+  min-width: 0;
   border: 0;
   outline: none;
   background: transparent;
@@ -347,18 +377,38 @@
   color: var(--mindocu-text-strong);
 }
 
+/* Hide the browser's native clear affordance; we render our own button. */
+.mindocu-searchbar-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.mindocu-searchbar-count {
+  flex-shrink: 0;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(51, 72, 201, 0.1);
+  color: var(--mindocu-blue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .mindocu-searchbar-clear {
+  flex-shrink: 0;
   border: 0;
   background: transparent;
   padding: 0;
   display: grid;
   place-items: center;
+  cursor: pointer;
   color: var(--mindocu-muted);
 }
 
-.mindocu-searchbar-meta {
-  color: var(--mindocu-muted);
-  font-size: 0.8rem;
+.mindocu-searchbar-clear:hover,
+.mindocu-searchbar-clear:focus-visible {
+  outline: none;
+  color: var(--mindocu-text-strong);
 }
 
 .mindocu-inner-searchhint {
@@ -1078,6 +1128,11 @@
 .dark .mindocu-searchbar-inputwrap {
   border: 1px solid var(--mindocu-line);
   background: var(--mindocu-surface-2);
+}
+
+.dark .mindocu-searchbar-count {
+  background: rgba(124, 140, 255, 0.16);
+  color: var(--mindocu-blue);
 }
 
 .dark .mindocu-inner-searchhint,

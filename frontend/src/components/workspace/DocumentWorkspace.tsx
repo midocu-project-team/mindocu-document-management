@@ -20,7 +20,6 @@ export function DocumentWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId)
 
-  const [leftTab, setLeftTab] = useState<'Segmente' | 'Suche'>('Segmente')
   const [rightTab, setRightTab] = useState<'Zusammenfassung' | 'Chat' | 'Chat Sessions'>('Zusammenfassung')
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
@@ -152,8 +151,6 @@ export function DocumentWorkspace() {
         <div className="mindocu-workspace-grid" style={workspaceGridStyle}>
           <div className={`mindocu-grid-pane${leftSidebarOpen ? '' : ' is-collapsed'}`} aria-hidden={!leftSidebarOpen}>
             <InnerSidebarLeft
-              activeTab={leftTab}
-              onTabChange={setLeftTab}
               segments={activeSegments}
               selectedSegmentIndex={selectedSegmentIndex}
               onSelectSegment={handleSelectSegment}

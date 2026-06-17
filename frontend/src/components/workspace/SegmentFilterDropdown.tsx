@@ -54,7 +54,6 @@ export function SegmentFilterDropdown({
         aria-label="Segmentfilter"
       >
         <Filter size={14} />
-        <span>Filter</span>
         <ChevronDown size={14} className={isOpen ? 'is-rotated' : undefined} />
       </button>
 
