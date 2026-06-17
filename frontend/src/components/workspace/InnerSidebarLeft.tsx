@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { SearchToolbar } from './SearchToolbar'
 import { SegmentFilterDropdown } from './SegmentFilterDropdown'
-import { formatPageRange, isSegmentVisible } from './segmentUtils'
+import { formatPageRange, isSegmentShown } from './segmentUtils'
+import { SEGMENT_TITLE_FALLBACK } from './workspaceTypes'
 
 export type Segment = {
   id: string
-  title: string
-  summary: string
+  title: string | null
+  summary: string | null
   relevant: boolean
   start_page: number
   end_page: number
@@ -49,14 +50,9 @@ export function InnerSidebarLeft({
     activeCard?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedSegmentIndex])
 
-  const filteredSegments = segments.filter((segment) => {
-    if (!isSegmentVisible(segment, showRelevantSegments, showIrrelevantSegments)) {
-      return false
-    }
-
-    const haystack = `${segment.title} ${formatPageRange(segment.start_page, segment.end_page)}`.toLowerCase()
-    return haystack.includes(query.trim().toLowerCase())
-  })
+  const filteredSegments = segments.filter((segment) =>
+    isSegmentShown(segment, showRelevantSegments, showIrrelevantSegments, query),
+  )
 
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--left">
@@ -93,7 +89,7 @@ export function InnerSidebarLeft({
                     }
                   }}
                 >
-                  <div className="mindocu-segment-card-title">{segment.title}</div>
+                  <div className="mindocu-segment-card-title">{segment.title ?? SEGMENT_TITLE_FALLBACK}</div>
                   <div className="mindocu-segment-card-meta">
                     <span>{formatPageRange(segment.start_page, segment.end_page)}</span>
                   </div>
