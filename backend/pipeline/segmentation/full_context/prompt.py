@@ -16,7 +16,7 @@ Diese Dokumente bestehen aus mehreren aneinandergereihten Subdokumenten (z.B. \
 Polizeiberichte, Jugendamtberichte, ärztliche Stellungnahmen, Schreiben von \
 Anwälten, Gerichtsbeschlüsse, etc.). Daneben gibt es auch kurze, oft ein- bis zweiseitige \
 Verwaltungsdokumente wie Transfervermerke, Verfügungen, Prüfvermerke, \
-Kontrollbelege, Fehlblätter, Signaturprüfprotokolle, Übertragungsnachweise, \
+Kontrollbelege, Fehlblätter, Signaturprüfprotokolle, Übertragungsnachweise, Zählblätter (PEBB§Y-Zählblatt) \
 Erledigungsvermerke oder Empfangsbekenntnisse -- sie haben inhaltlich nichts \
 mit dem Gutachten zu tun, bilden aber trotzdem jeweils ein eigenes Segment."""
 
