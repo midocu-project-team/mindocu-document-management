@@ -1,4 +1,13 @@
-import { Box, Card, CardActionArea, IconButton, ListItemIcon, Menu, MenuItem, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardActionArea,
+  IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Typography,
+} from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import FolderIcon from '@mui/icons-material/Folder';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
@@ -17,7 +26,14 @@ interface CaseCardProps {
   onDelete: () => void;
 }
 
-export default function CaseCard({ name, fileCount, createdAt, onClick, onRename, onDelete }: CaseCardProps) {
+export default function CaseCard({
+  name,
+  fileCount,
+  createdAt,
+  onClick,
+  onRename,
+  onDelete,
+}: CaseCardProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   const formattedDate = createdAt.toLocaleDateString('de-DE', {
@@ -74,11 +90,15 @@ export default function CaseCard({ name, fileCount, createdAt, onClick, onRename
 
       <Menu anchorEl={anchor} open={!!anchor} onClose={closeMenu}>
         <MenuItem onClick={handleRename}>
-          <ListItemIcon><DriveFileRenameOutlineIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <DriveFileRenameOutlineIcon fontSize="small" />
+          </ListItemIcon>
           Umbenennen
         </MenuItem>
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-          <ListItemIcon><DeleteOutlinedIcon fontSize="small" color="error" /></ListItemIcon>
+          <ListItemIcon>
+            <DeleteOutlinedIcon fontSize="small" color="error" />
+          </ListItemIcon>
           Datei löschen
         </MenuItem>
       </Menu>

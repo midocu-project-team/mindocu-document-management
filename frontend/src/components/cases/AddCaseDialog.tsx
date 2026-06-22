@@ -47,9 +47,7 @@ export default function AddCaseDialog({
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ mb: 2 }}>
-          Bitte geben Sie dem Fall einen Namen.
-        </DialogContentText>
+        <DialogContentText sx={{ mb: 2 }}>Bitte geben Sie dem Fall einen Namen.</DialogContentText>
         <TextField
           autoFocus
           fullWidth

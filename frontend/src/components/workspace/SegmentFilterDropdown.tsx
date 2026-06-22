@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Eye, EyeOff, Filter } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Eye, EyeOff, Filter } from 'lucide-react';
 
 type SegmentFilterDropdownProps = {
-  showRelevantSegments: boolean
-  showIrrelevantSegments: boolean
-  onToggleShowRelevantSegments: () => void
-  onToggleShowIrrelevantSegments: () => void
-}
+  showRelevantSegments: boolean;
+  showIrrelevantSegments: boolean;
+  onToggleShowRelevantSegments: () => void;
+  onToggleShowIrrelevantSegments: () => void;
+};
 
 export function SegmentFilterDropdown({
   showRelevantSegments,
@@ -14,34 +14,34 @@ export function SegmentFilterDropdown({
   onToggleShowRelevantSegments,
   onToggleShowIrrelevantSegments,
 }: SegmentFilterDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement | null>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
-      return undefined
+      return undefined;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
       if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsOpen(false)
+        setIsOpen(false);
       }
-    }
+    };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false)
+        setIsOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleEscape)
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [isOpen])
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   return (
     <div className="mindocu-segment-filter" ref={dropdownRef}>
@@ -65,7 +65,9 @@ export function SegmentFilterDropdown({
               className="mindocu-segment-filter-visibility"
               onClick={onToggleShowRelevantSegments}
               aria-label={
-                showRelevantSegments ? 'Relevante Segmente ausblenden' : 'Relevante Segmente einblenden'
+                showRelevantSegments
+                  ? 'Relevante Segmente ausblenden'
+                  : 'Relevante Segmente einblenden'
               }
               aria-pressed={showRelevantSegments}
             >
@@ -93,5 +95,5 @@ export function SegmentFilterDropdown({
         </div>
       ) : null}
     </div>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import type { Segment } from './InnerSidebarLeft'
+import type { Segment } from './InnerSidebarLeft';
 
 /** Human-readable page range such as "7" or "3-8". */
 export function formatPageRange(startPage: number, endPage: number): string {
-  return startPage === endPage ? `${startPage}` : `${startPage}-${endPage}`
+  return startPage === endPage ? `${startPage}` : `${startPage}-${endPage}`;
 }
 
 export function pageIsInSegmentRange(page: number, segment: Segment): boolean {
-  return page >= segment.start_page && page <= segment.end_page
+  return page >= segment.start_page && page <= segment.end_page;
 }
 
 export function isSegmentVisible(
@@ -15,22 +15,22 @@ export function isSegmentVisible(
   showIrrelevantSegments: boolean,
 ): boolean {
   if (segment.relevant) {
-    return showRelevantSegments
+    return showRelevantSegments;
   }
 
-  return showIrrelevantSegments
+  return showIrrelevantSegments;
 }
 
 /** Case-insensitive substring match against the segment's title, summary and page range. */
 export function segmentMatchesQuery(segment: Segment, query: string): boolean {
-  const needle = query.trim().toLowerCase()
+  const needle = query.trim().toLowerCase();
   if (!needle) {
-    return true
+    return true;
   }
 
-  const pageRange = formatPageRange(segment.start_page, segment.end_page)
-  const haystack = `${segment.title ?? ''} ${segment.summary ?? ''} ${pageRange}`.toLowerCase()
-  return haystack.includes(needle)
+  const pageRange = formatPageRange(segment.start_page, segment.end_page);
+  const haystack = `${segment.title ?? ''} ${segment.summary ?? ''} ${pageRange}`.toLowerCase();
+  return haystack.includes(needle);
 }
 
 /** A segment is shown when it passes both the relevance toggles and the search query. */
@@ -43,7 +43,7 @@ export function isSegmentShown(
   return (
     isSegmentVisible(segment, showRelevantSegments, showIrrelevantSegments) &&
     segmentMatchesQuery(segment, query)
-  )
+  );
 }
 
 export function getVisiblePages(
@@ -54,66 +54,66 @@ export function getVisiblePages(
   query = '',
 ): number[] {
   if (pageCount <= 0) {
-    return []
+    return [];
   }
 
   // During an active search only matching segments' pages stay visible, so
   // segment-less "orphan" pages are hidden; without a query they stay visible.
-  const hasQuery = query.trim().length > 0
-  const visiblePages: number[] = []
+  const hasQuery = query.trim().length > 0;
+  const visiblePages: number[] = [];
 
   for (let page = 1; page <= pageCount; page += 1) {
-    const segmentIndex = findSegmentIndexForPage(segments, page)
+    const segmentIndex = findSegmentIndexForPage(segments, page);
     if (segmentIndex < 0) {
       if (!hasQuery) {
-        visiblePages.push(page)
+        visiblePages.push(page);
       }
-      continue
+      continue;
     }
 
-    const segment = segments[segmentIndex]
+    const segment = segments[segmentIndex];
     if (isSegmentShown(segment, showRelevantSegments, showIrrelevantSegments, query)) {
-      visiblePages.push(page)
+      visiblePages.push(page);
     }
   }
 
-  return visiblePages
+  return visiblePages;
 }
 
 export function getNearestVisiblePage(currentPage: number, visiblePages: number[]): number {
   if (visiblePages.length === 0) {
-    return 1
+    return 1;
   }
 
   if (visiblePages.includes(currentPage)) {
-    return currentPage
+    return currentPage;
   }
 
-  const nextPage = visiblePages.find((page) => page >= currentPage)
-  return nextPage ?? visiblePages[visiblePages.length - 1]
+  const nextPage = visiblePages.find((page) => page >= currentPage);
+  return nextPage ?? visiblePages[visiblePages.length - 1];
 }
 
 export function getNextVisiblePage(currentPage: number, visiblePages: number[]): number | null {
-  const currentIndex = visiblePages.indexOf(currentPage)
+  const currentIndex = visiblePages.indexOf(currentPage);
   if (currentIndex < 0) {
-    return visiblePages.find((page) => page > currentPage) ?? visiblePages[0] ?? null
+    return visiblePages.find((page) => page > currentPage) ?? visiblePages[0] ?? null;
   }
 
-  return visiblePages[currentIndex + 1] ?? null
+  return visiblePages[currentIndex + 1] ?? null;
 }
 
 export function getPreviousVisiblePage(currentPage: number, visiblePages: number[]): number | null {
-  const currentIndex = visiblePages.indexOf(currentPage)
+  const currentIndex = visiblePages.indexOf(currentPage);
   if (currentIndex < 0) {
-    const previousPages = visiblePages.filter((page) => page < currentPage)
-    return previousPages[previousPages.length - 1] ?? null
+    const previousPages = visiblePages.filter((page) => page < currentPage);
+    return previousPages[previousPages.length - 1] ?? null;
   }
 
-  return visiblePages[currentIndex - 1] ?? null
+  return visiblePages[currentIndex - 1] ?? null;
 }
 
 export function findSegmentIndexForPage(segments: Segment[], page: number): number {
-  return segments.findIndex((segment) => pageIsInSegmentRange(page, segment))
+  return segments.findIndex((segment) => pageIsInSegmentRange(page, segment));
 }
 
 /**
@@ -133,13 +133,15 @@ export function visibleSegmentDistance(
 ): number {
   const visibleIndices = segments
     .map((_, index) => index)
-    .filter((index) => isSegmentShown(segments[index], showRelevantSegments, showIrrelevantSegments, query))
+    .filter((index) =>
+      isSegmentShown(segments[index], showRelevantSegments, showIrrelevantSegments, query),
+    );
 
-  const from = visibleIndices.indexOf(fromIndex)
-  const to = visibleIndices.indexOf(toIndex)
+  const from = visibleIndices.indexOf(fromIndex);
+  const to = visibleIndices.indexOf(toIndex);
   if (from < 0 || to < 0) {
-    return Number.POSITIVE_INFINITY
+    return Number.POSITIVE_INFINITY;
   }
 
-  return Math.abs(to - from)
+  return Math.abs(to - from);
 }

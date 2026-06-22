@@ -1,36 +1,36 @@
-import { useEffect, type RefObject } from 'react'
-import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual'
+import { useEffect, type RefObject } from 'react';
+import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual';
 
 // A4 portrait fallback (height / width) used to size a page slot until its
 // real rendered height has been measured.
-export const PDF_DEFAULT_ASPECT = 1.414
+export const PDF_DEFAULT_ASPECT = 1.414;
 
 type UsePdfPageVirtualizerArgs = {
   /** The scrollable viewport element that holds the page slots. */
-  scrollRef: RefObject<HTMLDivElement | null>
+  scrollRef: RefObject<HTMLDivElement | null>;
   /** Number of (visible) pages to virtualize. */
-  count: number
+  count: number;
   /** Rendered page width in px (already zoom-scaled). */
-  pageWidth: number
+  pageWidth: number;
   /** Vertical gap between pages in px. */
-  pageGap: number
+  pageGap: number;
   /**
    * Re-measure trigger: whenever this value changes the cached page heights
    * are dropped back to the estimate (e.g. on zoom, document or filter change),
    * because those events resize or reorder every page.
    */
-  resetKey: string | number
-}
+  resetKey: string | number;
+};
 
 export type PdfPageVirtualizer = {
-  virtualItems: VirtualItem[]
-  totalSize: number
-  measureElement: (element: Element | null) => void
+  virtualItems: VirtualItem[];
+  totalSize: number;
+  measureElement: (element: Element | null) => void;
   /** Scroll the page at this index to the top of the viewport. */
-  scrollToIndex: (index: number, behavior?: ScrollBehavior) => void
+  scrollToIndex: (index: number, behavior?: ScrollBehavior) => void;
   /** Index of the page slot straddling the viewport's vertical centre. */
-  getCenteredIndex: () => number | null
-}
+  getCenteredIndex: () => number | null;
+};
 
 /**
  * Shared virtualization mechanics for the PDF viewers: mounts only the page
@@ -51,26 +51,26 @@ export function usePdfPageVirtualizer({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => Math.round(pageWidth * PDF_DEFAULT_ASPECT) + pageGap,
     overscan: 2,
-  })
+  });
 
   useEffect(() => {
-    rowVirtualizer.measure()
+    rowVirtualizer.measure();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey])
+  }, [resetKey]);
 
   const getCenteredIndex = (): number | null => {
-    const root = scrollRef.current
+    const root = scrollRef.current;
     if (!root || count === 0) {
-      return null
+      return null;
     }
-    const center = root.scrollTop + root.clientHeight / 2
+    const center = root.scrollTop + root.clientHeight / 2;
     for (const item of rowVirtualizer.getVirtualItems()) {
       if (center >= item.start && center < item.start + item.size) {
-        return item.index
+        return item.index;
       }
     }
-    return null
-  }
+    return null;
+  };
 
   return {
     virtualItems: rowVirtualizer.getVirtualItems(),
@@ -79,5 +79,5 @@ export function usePdfPageVirtualizer({
     scrollToIndex: (index, behavior = 'smooth') =>
       rowVirtualizer.scrollToIndex(index, { align: 'start', behavior }),
     getCenteredIndex,
-  }
+  };
 }

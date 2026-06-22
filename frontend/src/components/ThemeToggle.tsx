@@ -1,5 +1,5 @@
-import { useColorScheme } from '@mui/material/styles'
-import { Moon, Sun } from 'lucide-react'
+import { useColorScheme } from '@mui/material/styles';
+import { Moon, Sun } from 'lucide-react';
 
 /**
  * Light/dark toggle for the global navigation rail. Defaults follow the OS
@@ -8,11 +8,11 @@ import { Moon, Sun } from 'lucide-react'
  * to avoid a wrong-icon flash on first paint.
  */
 export function ThemeToggle() {
-  const { mode, systemMode, setMode } = useColorScheme()
-  if (!mode) return null
+  const { mode, systemMode, setMode } = useColorScheme();
+  if (!mode) return null;
 
-  const resolved = mode === 'system' ? systemMode : mode
-  const isDark = resolved === 'dark'
+  const resolved = mode === 'system' ? systemMode : mode;
+  const isDark = resolved === 'dark';
 
   return (
     <button
@@ -24,7 +24,7 @@ export function ThemeToggle() {
     >
       {isDark ? <Sun size={26} strokeWidth={2.1} /> : <Moon size={26} strokeWidth={2.1} />}
     </button>
-  )
+  );
 }
 
-export default ThemeToggle
+export default ThemeToggle;

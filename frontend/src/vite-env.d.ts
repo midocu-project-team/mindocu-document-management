@@ -2,9 +2,9 @@
 
 interface ImportMetaEnv {
   /** Base URL of the mindocu backend API (no trailing slash). */
-  readonly VITE_API_BASE_URL?: string
+  readonly VITE_API_BASE_URL?: string;
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv
+  readonly env: ImportMetaEnv;
 }

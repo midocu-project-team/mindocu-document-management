@@ -10,54 +10,54 @@ export type ProcessingStatus =
   | 'segmenting'
   | 'enriching'
   | 'done'
-  | 'failed'
+  | 'failed';
 
 /** Aggregated case status (any document in-flight => "processing"). */
-export type CaseAggregateStatus = 'processing' | 'done'
+export type CaseAggregateStatus = 'processing' | 'done';
 
 export interface CaseSummary {
-  id: string
-  name: string
-  created_at: string
-  status: CaseAggregateStatus
-  document_count: number
+  id: string;
+  name: string;
+  created_at: string;
+  status: CaseAggregateStatus;
+  document_count: number;
 }
 
 export interface SegmentSummary {
-  segment_id: string
-  title: string | null
-  summary: string | null
-  relevance: boolean
-  matched_keywords: string[]
-  start_page: number
-  end_page: number
+  segment_id: string;
+  title: string | null;
+  summary: string | null;
+  relevance: boolean;
+  matched_keywords: string[];
+  start_page: number;
+  end_page: number;
 }
 
 export interface DocumentSummary {
-  document_id: string
-  file_name: string
-  processing_status: ProcessingStatus
-  total_pages: number
-  segments: SegmentSummary[]
+  document_id: string;
+  file_name: string;
+  processing_status: ProcessingStatus;
+  total_pages: number;
+  segments: SegmentSummary[];
 }
 
 export interface CaseDetail {
-  id: string
-  name: string
-  created_at: string
-  status: CaseAggregateStatus
-  documents: DocumentSummary[]
+  id: string;
+  name: string;
+  created_at: string;
+  status: CaseAggregateStatus;
+  documents: DocumentSummary[];
 }
 
 export interface DocumentStatus {
-  document_id: string
-  file_name: string
-  processing_status: ProcessingStatus
-  error_message: string | null
+  document_id: string;
+  file_name: string;
+  processing_status: ProcessingStatus;
+  error_message: string | null;
 }
 
 export interface CaseStatus {
-  case_id: string
-  status: CaseAggregateStatus
-  documents: DocumentStatus[]
+  case_id: string;
+  status: CaseAggregateStatus;
+  documents: DocumentStatus[];
 }

@@ -1,15 +1,15 @@
 type InnerSidebarRightProps = {
-  activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions'
-  onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void
-  segmentTitle: string
-  summary: string
-}
+  activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions';
+  onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void;
+  segmentTitle: string;
+  summary: string;
+};
 
-const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab']}> = [
+const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab'] }> = [
   { label: 'Zusammenfassung' },
   { label: 'Chat' },
-  { label: 'Chat Sessions'},
-]
+  { label: 'Chat Sessions' },
+];
 
 export function InnerSidebarRight({
   activeTab,
@@ -19,7 +19,11 @@ export function InnerSidebarRight({
 }: InnerSidebarRightProps) {
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--right">
-      <div className="mindocu-inner-tabs mindocu-inner-tabs--compact" role="tablist" aria-label="Seitenpanel">
+      <div
+        className="mindocu-inner-tabs mindocu-inner-tabs--compact"
+        role="tablist"
+        aria-label="Seitenpanel"
+      >
         {rightTabs.map(({ label }) => (
           <button
             key={label}
@@ -37,7 +41,9 @@ export function InnerSidebarRight({
           <>
             <div className="mindocu-summary-title">{segmentTitle}</div>
             <p className="mindocu-summary-text">{summary}</p>
-            <p className="mindocu-summary-note">KI generierte Zusammenfassung — nur zur Orientierung</p>
+            <p className="mindocu-summary-note">
+              KI generierte Zusammenfassung — nur zur Orientierung
+            </p>
 
             {/* <RightSidebarToolbar
               onRefresh={() => console.log('refresh summary')}
@@ -61,7 +67,7 @@ export function InnerSidebarRight({
         ) : null}
       </div>
     </aside>
-  )
+  );
 }
 
-export const InneSidebarRight = InnerSidebarRight
+export const InneSidebarRight = InnerSidebarRight;

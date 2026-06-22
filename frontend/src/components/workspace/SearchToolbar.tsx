@@ -1,14 +1,14 @@
-import { Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react';
 
 type SearchToolbarProps = {
-  query: string
-  onQueryChange: (query: string) => void
-  onClear: () => void
-  resultCount?: number
-}
+  query: string;
+  onQueryChange: (query: string) => void;
+  onClear: () => void;
+  resultCount?: number;
+};
 
 export function SearchToolbar({ query, onQueryChange, onClear, resultCount }: SearchToolbarProps) {
-  const hasQuery = query.trim().length > 0
+  const hasQuery = query.trim().length > 0;
 
   return (
     <div className="mindocu-searchbar" role="search" aria-label="Suche">
@@ -38,5 +38,5 @@ export function SearchToolbar({ query, onQueryChange, onClear, resultCount }: Se
         ) : null}
       </div>
     </div>
-  )
+  );
 }

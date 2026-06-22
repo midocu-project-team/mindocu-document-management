@@ -1,25 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, MessageCircle, PenLine, MousePointer, Folders } from 'lucide-react'
-import type { WorkspaceDocument } from './workspaceTypes'
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, MessageCircle, PenLine, MousePointer, Folders } from 'lucide-react';
+import type { WorkspaceDocument } from './workspaceTypes';
 
 type WorkspaceToolbarProps = {
-  activeTool: 'select' | 'pen' | 'comment'
-  onToolChange: (tool: 'select' | 'pen' | 'comment') => void
-  documents: WorkspaceDocument[]
-  selectedDocumentId: string
-  onSelectDocument: (documentId: string) => void
-  currentPage: number
-  pageCount: number
-  zoom: number
-  onZoomOut: () => void
-  onZoomIn: () => void
-}
+  activeTool: 'select' | 'pen' | 'comment';
+  onToolChange: (tool: 'select' | 'pen' | 'comment') => void;
+  documents: WorkspaceDocument[];
+  selectedDocumentId: string;
+  onSelectDocument: (documentId: string) => void;
+  currentPage: number;
+  pageCount: number;
+  zoom: number;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+};
 
 const editTools = [
   { id: 'select' as const, icon: MousePointer, label: 'Auswählen' },
   { id: 'pen' as const, icon: PenLine, label: 'Bearbeiten' },
   { id: 'comment' as const, icon: MessageCircle, label: 'Kommentar' },
-]
+];
 
 export function WorkspaceToolbar({
   activeTool,
@@ -28,45 +28,49 @@ export function WorkspaceToolbar({
   selectedDocumentId,
   onSelectDocument,
 }: WorkspaceToolbarProps) {
-  const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement | null>(null)
+  const [isDocumentMenuOpen, setIsDocumentMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const selectedDocument =
-    documents.find((document) => document.id === selectedDocumentId) ?? documents[0]
+    documents.find((document) => document.id === selectedDocumentId) ?? documents[0];
 
   useEffect(() => {
     if (!isDocumentMenuOpen) {
-      return undefined
+      return undefined;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
       if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsDocumentMenuOpen(false)
+        setIsDocumentMenuOpen(false);
       }
-    }
+    };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsDocumentMenuOpen(false)
+        setIsDocumentMenuOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleEscape)
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [isDocumentMenuOpen])
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isDocumentMenuOpen]);
 
   const handleSelectDocument = (documentId: string) => {
-    onSelectDocument(documentId)
-    setIsDocumentMenuOpen(false)
-  }
+    onSelectDocument(documentId);
+    setIsDocumentMenuOpen(false);
+  };
 
   return (
-    <div className="mindocu-toolbar mindocu-toolbar--workspace" role="toolbar" aria-label="Werkzeuge und Ansicht">
+    <div
+      className="mindocu-toolbar mindocu-toolbar--workspace"
+      role="toolbar"
+      aria-label="Werkzeuge und Ansicht"
+    >
       <div className="mindocu-toolbar-group">
         {editTools.map(({ id, icon: Icon, label }) => (
           <button
@@ -98,9 +102,13 @@ export function WorkspaceToolbar({
           </button>
 
           {isDocumentMenuOpen ? (
-            <div className="mindocu-toolbar-dropdown-menu" role="menu" aria-label="Hochgeladene PDFs">
+            <div
+              className="mindocu-toolbar-dropdown-menu"
+              role="menu"
+              aria-label="Hochgeladene PDFs"
+            >
               {documents.map((document) => {
-                const isSelected = document.id === selectedDocumentId
+                const isSelected = document.id === selectedDocumentId;
 
                 return (
                   <button
@@ -116,14 +124,14 @@ export function WorkspaceToolbar({
                       {document.segments.length} Segmente
                     </span>
                   </button>
-                )
+                );
               })}
             </div>
           ) : null}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default WorkspaceToolbar
+export default WorkspaceToolbar;

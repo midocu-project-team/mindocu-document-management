@@ -1,30 +1,30 @@
-import { useEffect, useRef } from 'react'
-import { SearchToolbar } from './SearchToolbar'
-import { SegmentFilterDropdown } from './SegmentFilterDropdown'
-import { formatPageRange, isSegmentShown } from './segmentUtils'
-import { SEGMENT_TITLE_FALLBACK } from './workspaceTypes'
+import { useEffect, useRef } from 'react';
+import { SearchToolbar } from './SearchToolbar';
+import { SegmentFilterDropdown } from './SegmentFilterDropdown';
+import { formatPageRange, isSegmentShown } from './segmentUtils';
+import { SEGMENT_TITLE_FALLBACK } from './workspaceTypes';
 
 export type Segment = {
-  id: string
-  title: string | null
-  summary: string | null
-  relevant: boolean
-  start_page: number
-  end_page: number
-}
+  id: string;
+  title: string | null;
+  summary: string | null;
+  relevant: boolean;
+  start_page: number;
+  end_page: number;
+};
 
 type InnerSidebarLeftProps = {
-  segments: Segment[]
-  selectedSegmentIndex: number
-  onSelectSegment: (index: number) => void
-  showRelevantSegments: boolean
-  showIrrelevantSegments: boolean
-  onToggleShowRelevantSegments: () => void
-  onToggleShowIrrelevantSegments: () => void
-  query: string
-  onQueryChange: (query: string) => void
-  onClearQuery: () => void
-}
+  segments: Segment[];
+  selectedSegmentIndex: number;
+  onSelectSegment: (index: number) => void;
+  showRelevantSegments: boolean;
+  showIrrelevantSegments: boolean;
+  onToggleShowRelevantSegments: () => void;
+  onToggleShowIrrelevantSegments: () => void;
+  query: string;
+  onQueryChange: (query: string) => void;
+  onClearQuery: () => void;
+};
 
 export function InnerSidebarLeft({
   segments,
@@ -38,21 +38,21 @@ export function InnerSidebarLeft({
   onQueryChange,
   onClearQuery,
 }: InnerSidebarLeftProps) {
-  const segmentListRef = useRef<HTMLDivElement | null>(null)
+  const segmentListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const list = segmentListRef.current
+    const list = segmentListRef.current;
     if (!list) {
-      return
+      return;
     }
 
-    const activeCard = list.querySelector<HTMLElement>('.mindocu-segment-card.is-active')
-    activeCard?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedSegmentIndex])
+    const activeCard = list.querySelector<HTMLElement>('.mindocu-segment-card.is-active');
+    activeCard?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [selectedSegmentIndex]);
 
   const filteredSegments = segments.filter((segment) =>
     isSegmentShown(segment, showRelevantSegments, showIrrelevantSegments, query),
-  )
+  );
 
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--left">
@@ -75,29 +75,31 @@ export function InnerSidebarLeft({
 
         <div ref={segmentListRef} className="mindocu-segment-list" aria-label="Segmentliste">
           {filteredSegments.map((segment) => {
-              const segmentIndex = segments.findIndex((candidate) => candidate.id === segment.id)
-              const isSelected = segmentIndex === selectedSegmentIndex
+            const segmentIndex = segments.findIndex((candidate) => candidate.id === segment.id);
+            const isSelected = segmentIndex === selectedSegmentIndex;
 
-              return (
-                <button
-                  key={segment.id}
-                  type="button"
-                  className={`mindocu-segment-card${isSelected ? ' is-active' : ''}${segment.relevant ? '' : ' is-irrelevant'}`}
-                  onClick={() => {
-                    if (segmentIndex >= 0) {
-                      onSelectSegment(segmentIndex)
-                    }
-                  }}
-                >
-                  <div className="mindocu-segment-card-title">{segment.title ?? SEGMENT_TITLE_FALLBACK}</div>
-                  <div className="mindocu-segment-card-meta">
-                    <span>{formatPageRange(segment.start_page, segment.end_page)}</span>
-                  </div>
-                </button>
-              )
-            })}
+            return (
+              <button
+                key={segment.id}
+                type="button"
+                className={`mindocu-segment-card${isSelected ? ' is-active' : ''}${segment.relevant ? '' : ' is-irrelevant'}`}
+                onClick={() => {
+                  if (segmentIndex >= 0) {
+                    onSelectSegment(segmentIndex);
+                  }
+                }}
+              >
+                <div className="mindocu-segment-card-title">
+                  {segment.title ?? SEGMENT_TITLE_FALLBACK}
+                </div>
+                <div className="mindocu-segment-card-meta">
+                  <span>{formatPageRange(segment.start_page, segment.end_page)}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </aside>
-  )
+  );
 }

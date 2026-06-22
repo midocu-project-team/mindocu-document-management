@@ -1,11 +1,11 @@
-import { House } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { ThemeToggle } from '../ThemeToggle'
+import { House } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ThemeToggle } from '../ThemeToggle';
 
 export function WorkspaceSidebar() {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const isHome = pathname === '/'
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isHome = pathname === '/';
 
   return (
     <aside className="mindocu-sidebar" aria-label="Hauptnavigation">
@@ -28,5 +28,5 @@ export function WorkspaceSidebar() {
         <ThemeToggle />
       </div>
     </aside>
-  )
+  );
 }

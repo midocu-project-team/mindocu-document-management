@@ -57,7 +57,9 @@ export default function CaseHomePage() {
     if (status === 'new') {
       navigator(`/pdf-review/${item.id}`);
     } else if (status === 'processing') {
-      setNotice('Dieser Fall befindet sich noch in Verarbeitung und kann derzeit nicht geöffnet werden.');
+      setNotice(
+        'Dieser Fall befindet sich noch in Verarbeitung und kann derzeit nicht geöffnet werden.',
+      );
     } else {
       navigator(`/pdf-viewer/${item.id}`);
     }
@@ -89,7 +91,7 @@ export default function CaseHomePage() {
 
       {isError && (
         <Alert severity="warning" variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
-          Oops! Fälle konnten nicht geladen werden. 
+          Oops! Fälle konnten nicht geladen werden.
         </Alert>
       )}
 
@@ -98,7 +100,8 @@ export default function CaseHomePage() {
         emptyMessage="Keine neuen Fälle vorhanden"
         emptySubtext="Fügen Sie einen neuen Fall hinzu, um zu starten."
         onAdd={() => setAddOpen(true)}
-        addLabel="Fall hinzufügen">
+        addLabel="Fall hinzufügen"
+      >
         {renderCases(newCases)}
       </CaseSection>
 
@@ -109,11 +112,7 @@ export default function CaseHomePage() {
         {renderCases(doneCases)}
       </CaseSection>
 
-      <AddCaseDialog
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onConfirm={handleAddCase}
-      />
+      <AddCaseDialog open={addOpen} onClose={() => setAddOpen(false)} onConfirm={handleAddCase} />
 
       <AddCaseDialog
         open={!!renameTarget}
@@ -130,7 +129,12 @@ export default function CaseHomePage() {
         onClose={() => setNotice(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={() => setNotice(null)} severity="warning" variant="filled" sx={{ borderRadius: 2 }}>
+        <Alert
+          onClose={() => setNotice(null)}
+          severity="warning"
+          variant="filled"
+          sx={{ borderRadius: 2 }}
+        >
           {notice}
         </Alert>
       </Snackbar>

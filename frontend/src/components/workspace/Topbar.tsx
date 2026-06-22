@@ -1,12 +1,12 @@
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 type TopbarProps = {
-  title: string
-  leftSidebarOpen: boolean
-  rightSidebarOpen: boolean
-  onToggleLeftSidebar: () => void
-  onToggleRightSidebar: () => void
-}
+  title: string;
+  leftSidebarOpen: boolean;
+  rightSidebarOpen: boolean;
+  onToggleLeftSidebar: () => void;
+  onToggleRightSidebar: () => void;
+};
 
 export function Topbar({
   title,
@@ -18,7 +18,6 @@ export function Topbar({
   return (
     <header className="mindocu-topbar">
       <div className="mindocu-topbar-shell">
-
         <div className="mindocu-topbar-left">
           <button
             type="button"
@@ -46,5 +45,5 @@ export function Topbar({
         </div>
       </div>
     </header>
-  )
+  );
 }

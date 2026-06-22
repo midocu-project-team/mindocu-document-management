@@ -41,9 +41,7 @@ export default function CaseSection({
       </Box>
 
       {hasContent ? (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-          {children}
-        </Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>{children}</Box>
       ) : (
         <Box
           sx={{
