@@ -41,8 +41,9 @@ class FullContextOptions(BaseModel):
 
     # Windowing trigger: if the estimated input exceeds this, fall back to
     # sliding windows. Keep below the provider's context window to leave room
-    # for the system prompt and the generated segment list.
-    max_input_tokens: int = 100_000
+    # for the system prompt and the generated segment list. None means "no
+    # limit": never window, always send the whole document in one pass.
+    max_input_tokens: int | None = 100_000
 
     # Per-block text cap and how many leading blocks to keep in a page
     # fingerprint -- boundary cues sit at the top of a page (letterhead/heading).
@@ -138,29 +139,31 @@ class FullContextSegmentationStrategy(SegmentationStrategy):
         """
         payload = _document_payload(pages, self.options)
         est_tokens = len(payload) // 4  # rough chars->tokens estimate
+        budget = self.options.max_input_tokens
 
-        if est_tokens <= self.options.max_input_tokens:
-            try:
-                plan = self._call_llm(payload)
-                return list(plan.segments), []
-            except Exception as exc:  # noqa: BLE001 - degrade instead of aborting
-                logger.exception("Full-context segmentation call failed")
-                # No scope: the failure concerns the whole-document call.
-                return [], [
-                    SegmentationError(
-                        error_type=SegmentationErrorType.LLM_CALL_FAILED,
-                        message=f"full-context segmentation failed: {exc}",
-                    )
-                ]
+        # A budget of None disables windowing: always send the whole document.
+        if budget is not None and est_tokens > budget:
+            logger.debug(
+                "Payload ~%d tok > budget %d -> windowing (%d pages, %d overlap)",
+                est_tokens,
+                budget,
+                self.options.window_pages,
+                self.options.window_overlap,
+            )
+            return self._plan_windowed(pages)
 
-        logger.debug(
-            "Payload ~%d tok > budget %d -> windowing (%d pages, %d overlap)",
-            est_tokens,
-            self.options.max_input_tokens,
-            self.options.window_pages,
-            self.options.window_overlap,
-        )
-        return self._plan_windowed(pages)
+        try:
+            plan = self._call_llm(payload)
+            return list(plan.segments), []
+        except Exception as exc:  # noqa: BLE001 - degrade instead of aborting
+            logger.exception("Full-context segmentation call failed")
+            # No scope: the failure concerns the whole-document call.
+            return [], [
+                SegmentationError(
+                    error_type=SegmentationErrorType.LLM_CALL_FAILED,
+                    message=f"full-context segmentation failed: {exc}",
+                )
+            ]
 
     def _plan_windowed(
         self, pages: list[PageContent]
