@@ -1,17 +1,17 @@
 import { Alert, Box, Button, Snackbar } from '@mui/material';
-import GenericHeader from '../workspace/GenericHeader';
+import GenericHeader from '../components/workspace/GenericHeader';
 import { useState } from 'react';
-import PipelineStatusBar from './PipelineStatusBar';
-import PDFViewerReview from './PDFViewerReview';
-import UploadingPage from './UploadingPage';
-import Checkpoint from './Checkpoint';
+import PipelineStatusBar from '../components/uploadpipeline/PipelineStatusBar';
+import PdfViewerReview from '../components/uploadpipeline/PdfViewerReview';
+import UploadingPage from '../components/uploadpipeline/UploadingPage';
+import Checkpoint from '../components/uploadpipeline/Checkpoint';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useUploadDocuments } from '../../api/hooks';
+import { useUploadDocuments } from '../api/hooks';
 
 const STEPS = ['Hochladen', 'Einverständnis'];
 const MAX_FILES = 3;
 
-export default function PdfUploadReview() {
+export default function PdfUploadPage() {
   const navigator = useNavigate();
   const { caseId } = useParams<{ caseId: string }>();
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -55,7 +55,7 @@ export default function PdfUploadReview() {
             height: '100%',
           }}
         >
-          <PDFViewerReview
+          <PdfViewerReview
             maxFiles={MAX_FILES}
             onValidChange={(v) => setValid(1, v)}
             onFilesChange={setFiles}

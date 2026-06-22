@@ -1,25 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { WorkspaceSidebar } from './WorkspaceSidebar';
-import { Topbar } from './Topbar';
-import { InnerSidebarLeft, type Segment } from './InnerSidebarLeft';
-import { InnerSidebarRight } from './InnerSidebarRight';
-import { WorkspaceToolbar } from './WorkspaceToolbar';
-import { PdfViewport, type PdfViewportHandle } from './PdfViewport';
+import { WorkspaceSidebar } from '../components/workspace/WorkspaceSidebar';
+import { Topbar } from '../components/workspace/Topbar';
+import { InnerSidebarLeft, type Segment } from '../components/workspace/InnerSidebarLeft';
+import { InnerSidebarRight } from '../components/workspace/InnerSidebarRight';
+import { WorkspaceToolbar } from '../components/workspace/WorkspaceToolbar';
+import { PdfViewport, type PdfViewportHandle } from '../components/workspace/PdfViewport';
 import {
   findSegmentIndexForPage,
   getNearestVisiblePage,
   getVisiblePages,
   visibleSegmentDistance,
-} from './segmentUtils';
+} from '../components/workspace/segmentUtils';
 import {
   SEGMENT_SUMMARY_FALLBACK,
   SEGMENT_TITLE_FALLBACK,
   toWorkspaceDocument,
-} from './workspaceTypes';
-import { useResizableWidth } from './useResizableWidth';
-import { useMediaQuery } from './useMediaQuery';
-import { useCaseDetail } from '../../api/hooks';
+} from '../components/workspace/workspaceTypes';
+import { useResizableWidth } from '../components/workspace/useResizableWidth';
+import { useMediaQuery } from '../components/workspace/useMediaQuery';
+import { useCaseDetail } from '../api/hooks';
 
 const NO_SEGMENTS: Segment[] = [];
 
@@ -41,7 +41,7 @@ const COMPACT_QUERY = '(max-width: 1100px)';
 // through the whole document.
 const SMOOTH_SCROLL_SEGMENT_DISTANCE = 2;
 
-export function DocumentWorkspace() {
+export function DocumentWorkspacePage() {
   const { caseId } = useParams<{ caseId: string }>();
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId);
 

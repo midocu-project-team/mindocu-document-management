@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
 import './components/workspace/workspace.css';
-import { DocumentWorkspace } from './components/workspace/DocumentWorkspace';
-// Simple landing kept inline to restore the original start screen
+import { DocumentWorkspacePage } from './pages/DocumentWorkspacePage';
 import MainLayout from './layouts/MainLayout';
 import CaseHomePage from './pages/CaseHomePage';
-import PdfUploadReview from './components/uploadpipeline/PdfUploadReview';
+import PdfUploadPage from './pages/PdfUploadPage';
 
 function App() {
   return (
@@ -13,9 +12,9 @@ function App() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<CaseHomePage />} />
-          <Route path="/pdf-review/:caseId" element={<PdfUploadReview />} />
+          <Route path="/pdf-review/:caseId" element={<PdfUploadPage />} />
         </Route>
-        <Route path="/pdf-viewer/:caseId" element={<DocumentWorkspace />} />
+        <Route path="/pdf-viewer/:caseId" element={<DocumentWorkspacePage />} />
       </Routes>
     </BrowserRouter>
   );

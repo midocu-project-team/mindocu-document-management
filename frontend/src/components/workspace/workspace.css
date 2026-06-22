@@ -211,7 +211,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  /* Widths come from custom properties set inline by DocumentWorkspace so the
+  /* Widths come from custom properties set inline by DocumentWorkspacePage so the
      compact @media rules below can override the whole template — an inline
      grid-template-columns would beat any media query. */
   grid-template-columns: var(--mindocu-left-w, 284px) minmax(0, 1fr) var(--mindocu-right-w, 380px);
@@ -1067,7 +1067,7 @@ body.mindocu-resizing * {
    and both sidebars turn into off-canvas drawers that slide in over the
    PDF. Open/closed is driven by the same .is-collapsed toggle as desktop;
    here it animates a translate instead of zeroing the grid track. The
-   matching breakpoint lives in DocumentWorkspace (COMPACT_QUERY), which
+   matching breakpoint lives in DocumentWorkspacePage (COMPACT_QUERY), which
    also auto-closes the drawers and renders the backdrop.
    =================================================================== */
 @media (max-width: 1100px) {
@@ -1119,7 +1119,7 @@ body.mindocu-resizing * {
 }
 
 /* Dimmed backdrop behind an open drawer; clicking it closes the drawers
-   (handled in DocumentWorkspace). Only rendered in the compact layout. */
+   (handled in DocumentWorkspacePage). Only rendered in the compact layout. */
 .mindocu-workspace-backdrop {
   position: absolute;
   inset: 0;

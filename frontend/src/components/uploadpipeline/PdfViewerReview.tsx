@@ -34,7 +34,7 @@ interface PdfEntry {
   file: File;
 }
 
-interface PDFViewerReviewProps {
+interface PdfViewerReviewProps {
   onValidChange?: (valid: boolean) => void;
   /** Emits the current list of selected PDF files whenever it changes. */
   onFilesChange?: (files: File[]) => void;
@@ -47,12 +47,12 @@ function isPdf(file: File): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
-export default function PDFViewerReview({
+export default function PdfViewerReview({
   onValidChange,
   onFilesChange,
   onLimitReached,
   maxFiles = 3,
-}: PDFViewerReviewProps) {
+}: PdfViewerReviewProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const urlsRef = useRef<string[]>([]);
