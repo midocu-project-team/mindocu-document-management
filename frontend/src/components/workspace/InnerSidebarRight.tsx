@@ -44,11 +44,6 @@ export function InnerSidebarRight({
             <p className="mindocu-summary-note">
               KI generierte Zusammenfassung — nur zur Orientierung
             </p>
-
-            {/* <RightSidebarToolbar
-              onRefresh={() => console.log('refresh summary')}
-              onToggleLayout={() => console.log('toggle summary layout')}
-            /> */}
           </>
         ) : null}
 

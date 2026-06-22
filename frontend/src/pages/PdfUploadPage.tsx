@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Snackbar } from '@mui/material';
-import GenericHeader from '../components/workspace/GenericHeader';
+import GenericHeader from '../components/common/GenericHeader';
 import { useState } from 'react';
 import PipelineStatusBar from '../components/uploadpipeline/PipelineStatusBar';
 import PdfViewerReview from '../components/uploadpipeline/PdfViewerReview';

@@ -349,7 +349,7 @@ body.mindocu-resizing * {
   gap: 14px;
 }
 
-/* Left sidebar inner toolbar: vertical icon stack similar to main WorkspaceSidebar */
+/* Left sidebar inner toolbar: vertical icon stack similar to main AppSidebar */
 .mindocu-right-toolbar {
   display: flex;
   flex-direction: column;

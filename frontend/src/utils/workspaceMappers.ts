@@ -1,15 +1,7 @@
-import { pdfUrl } from '../../api/client';
-import type { DocumentSummary, SegmentSummary } from '../../api/types';
-import type { Segment } from './InnerSidebarLeft';
-
-/** One PDF of a case as consumed by the workspace UI. */
-export type WorkspaceDocument = {
-  id: string;
-  label: string;
-  pdfUrl: string;
-  totalPages: number;
-  segments: Segment[];
-};
+import { pdfUrl } from '../api/client';
+import type { DocumentSummary, SegmentSummary } from '../api/types';
+import type { Segment } from '../types/segment';
+import type { WorkspaceDocument } from '../types/document';
 
 /**
  * Display fallbacks for segments the enrichment stage left without title/summary.

@@ -1,8 +1,8 @@
 import { House } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ThemeToggle } from '../ThemeToggle';
+import { ThemeToggle } from './ThemeToggle';
 
-export function WorkspaceSidebar() {
+export function AppSidebar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isHome = pathname === '/';

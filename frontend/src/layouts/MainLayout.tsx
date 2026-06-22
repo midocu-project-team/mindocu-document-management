@@ -1,10 +1,10 @@
 import { Outlet } from 'react-router-dom';
-import { WorkspaceSidebar } from '../components/workspace/WorkspaceSidebar';
+import { AppSidebar } from '../components/common/AppSidebar';
 
 export default function MainLayout() {
   return (
     <div id="layout">
-      <WorkspaceSidebar />
+      <AppSidebar />
       <main id="content">
         <Outlet />
       </main>

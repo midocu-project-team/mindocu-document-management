@@ -1,17 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { SearchToolbar } from './SearchToolbar';
 import { SegmentFilterDropdown } from './SegmentFilterDropdown';
-import { formatPageRange, isSegmentShown } from './segmentUtils';
-import { SEGMENT_TITLE_FALLBACK } from './workspaceTypes';
-
-export type Segment = {
-  id: string;
-  title: string | null;
-  summary: string | null;
-  relevant: boolean;
-  start_page: number;
-  end_page: number;
-};
+import { formatPageRange, isSegmentShown } from '../../utils/segmentUtils';
+import { SEGMENT_TITLE_FALLBACK } from '../../utils/workspaceMappers';
+import type { Segment } from '../../types/segment';
 
 type InnerSidebarLeftProps = {
   segments: Segment[];

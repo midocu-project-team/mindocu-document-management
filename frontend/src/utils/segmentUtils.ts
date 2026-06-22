@@ -1,4 +1,4 @@
-import type { Segment } from './InnerSidebarLeft';
+import type { Segment } from '../types/segment';
 
 /** Human-readable page range such as "7" or "3-8". */
 export function formatPageRange(startPage: number, endPage: number): string {

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { WorkspaceSidebar } from '../components/workspace/WorkspaceSidebar';
+import { AppSidebar } from '../components/common/AppSidebar';
 import { Topbar } from '../components/workspace/Topbar';
-import { InnerSidebarLeft, type Segment } from '../components/workspace/InnerSidebarLeft';
+import { InnerSidebarLeft } from '../components/workspace/InnerSidebarLeft';
 import { InnerSidebarRight } from '../components/workspace/InnerSidebarRight';
 import { WorkspaceToolbar } from '../components/workspace/WorkspaceToolbar';
 import { PdfViewport, type PdfViewportHandle } from '../components/workspace/PdfViewport';
@@ -11,14 +11,15 @@ import {
   getNearestVisiblePage,
   getVisiblePages,
   visibleSegmentDistance,
-} from '../components/workspace/segmentUtils';
+} from '../utils/segmentUtils';
 import {
   SEGMENT_SUMMARY_FALLBACK,
   SEGMENT_TITLE_FALLBACK,
   toWorkspaceDocument,
-} from '../components/workspace/workspaceTypes';
-import { useResizableWidth } from '../components/workspace/useResizableWidth';
-import { useMediaQuery } from '../components/workspace/useMediaQuery';
+} from '../utils/workspaceMappers';
+import type { Segment } from '../types/segment';
+import { useResizableWidth } from '../hooks/useResizableWidth';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useCaseDetail } from '../api/hooks';
 
 const NO_SEGMENTS: Segment[] = [];
@@ -214,7 +215,7 @@ export function DocumentWorkspacePage() {
 
   return (
     <div className="mindocu-app-shell">
-      <WorkspaceSidebar />
+      <AppSidebar />
 
       <div className="mindocu-app-main">
         <Topbar
