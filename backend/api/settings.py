@@ -37,7 +37,11 @@ DEFAULT_KEYWORDS = RelevanceKeywords(
         "Übertragungsnachweis",
         "Erledigungsvermerk",
         "Transfervermerk",
-        "Fehlblatt"
+        "Fehlblatt",
+        "Kontrollbeleg",
+        "Zahlungsanzeige",
+        "Vermerk",
+        "Aktendeckel"
     ],
 )
 
