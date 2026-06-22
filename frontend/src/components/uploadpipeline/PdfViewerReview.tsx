@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Box, Button, Card, CardContent, IconButton, Tooltip, Typography } from '@mui/material';
-import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '../../hooks/usePdfPageVirtualizer';
+import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '@/hooks/usePdfPageVirtualizer';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';

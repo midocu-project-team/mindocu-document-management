@@ -1,8 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '../../hooks/usePdfPageVirtualizer';
-import { getNextVisiblePage, getPreviousVisiblePage } from '../../utils/segmentUtils';
+import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '@/hooks/usePdfPageVirtualizer';
+import { getNextVisiblePage, getPreviousVisiblePage } from '@/utils/segmentUtils';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',

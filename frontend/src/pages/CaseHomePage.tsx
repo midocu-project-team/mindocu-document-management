@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Box, Snackbar, Alert } from '@mui/material';
-import CasePageHeader from '../components/cases/CasePageHeader';
-import CaseSection from '../components/cases/CaseSection';
-import CaseCard from '../components/cases/CaseCard';
-import AddCaseDialog from '../components/cases/AddCaseDialog';
+import CasePageHeader from '@/components/cases/CasePageHeader';
+import CaseSection from '@/components/cases/CaseSection';
+import CaseCard from '@/components/cases/CaseCard';
+import AddCaseDialog from '@/components/cases/AddCaseDialog';
 import { useNavigate } from 'react-router-dom';
-import { useCases, useCreateCase, useDeleteCase, useRenameCase } from '../api/hooks';
-import type { CaseSummary } from '../api/types';
+import { useCases, useCreateCase, useDeleteCase, useRenameCase } from '@/api/hooks';
+import type { CaseSummary } from '@/api/types';
 
 type DisplayStatus = 'new' | 'processing' | 'done';
 

@@ -1,6 +1,6 @@
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useCaseStatus } from '../../api/hooks';
+import { useCaseStatus } from '@/api/hooks';
 
 /**
  * Post-upload processing screen: the case is processing in the background.

@@ -1,12 +1,12 @@
 import { Alert, Box, Button, Snackbar } from '@mui/material';
-import GenericHeader from '../components/common/GenericHeader';
+import GenericHeader from '@/components/common/GenericHeader';
 import { useState } from 'react';
-import PipelineStatusBar from '../components/uploadpipeline/PipelineStatusBar';
-import PdfViewerReview from '../components/uploadpipeline/PdfViewerReview';
-import UploadingPage from '../components/uploadpipeline/UploadingPage';
-import Checkpoint from '../components/uploadpipeline/Checkpoint';
+import PipelineStatusBar from '@/components/uploadpipeline/PipelineStatusBar';
+import PdfViewerReview from '@/components/uploadpipeline/PdfViewerReview';
+import UploadingPage from '@/components/uploadpipeline/UploadingPage';
+import Checkpoint from '@/components/uploadpipeline/Checkpoint';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useUploadDocuments } from '../api/hooks';
+import { useUploadDocuments } from '@/api/hooks';
 
 const STEPS = ['Hochladen', 'Einverständnis'];
 const MAX_FILES = 3;

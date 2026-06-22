@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { SearchToolbar } from './SearchToolbar';
 import { SegmentFilterDropdown } from './SegmentFilterDropdown';
-import { formatPageRange, isSegmentShown } from '../../utils/segmentUtils';
-import { SEGMENT_TITLE_FALLBACK } from '../../utils/workspaceMappers';
-import type { Segment } from '../../types/segment';
+import { formatPageRange, isSegmentShown } from '@/utils/segmentUtils';
+import { SEGMENT_TITLE_FALLBACK } from '@/utils/workspaceMappers';
+import type { Segment } from '@/types/segment';
 
 type InnerSidebarLeftProps = {
   segments: Segment[];

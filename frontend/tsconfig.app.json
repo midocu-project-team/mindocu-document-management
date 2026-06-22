@@ -7,6 +7,12 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
 
+    /* Path alias: "@/*" -> "src/*" (keep in sync with vite.config.ts resolve.alias).
+       Resolved relative to this tsconfig; no baseUrl needed (deprecated in TS 6.0+). */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { AppSidebar } from '../components/common/AppSidebar';
+import { AppSidebar } from '@/components/common/AppSidebar';
 
 export default function MainLayout() {
   return (

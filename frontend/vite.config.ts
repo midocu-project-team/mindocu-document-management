@@ -4,6 +4,7 @@ import babel from '@rolldown/plugin-babel'
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // pdf.js ships its JPEG2000 (openjpeg) and ICC color (qcms) decoders as separate
 // WASM modules and only loads them when given a `wasmUrl`. Without openjpeg.wasm,
@@ -36,6 +37,12 @@ function pdfjsWasm(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  resolve: {
+    // "@" maps to src/ — keep in sync with the paths entry in tsconfig.app.json.
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] }),
