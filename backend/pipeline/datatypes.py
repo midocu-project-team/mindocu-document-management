@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 import enum
 import uuid
 from datetime import datetime
@@ -90,6 +90,10 @@ class DocumentSegment(BaseModel):
     pages: list[PageContent]  # Taken directly from Task 1
     confidence: float | None  # How certain the model is for the boundary
 
+    @property
+    def blocks(self) -> list[ContentBlock]:
+        return [block for page in self.pages for block in page.blocks]
+
 
 class SegmentationErrorType(enum.StrEnum):
     LLM_CALL_FAILED = "llm_call_failed"  # the model call raised
@@ -122,6 +126,10 @@ class SegmentationResult(BaseModel):
 # Task 3: Output as EnrichmentResult
 ###################################
 
+class SummaryReference(BaseModel):
+    text: str
+    block_ids: list[int]
+
 
 class EnrichmentErrorType(enum.StrEnum):
     LLM_CALL_FAILED = "llm_call_failed"  # title/summary generation raised
@@ -145,10 +153,14 @@ class EnrichedSegment(DocumentSegment):
     """
 
     title: str | None  # Short document title (LLM-generated); None if generation failed
-    summary: str | None  # AI summary of the segment (LLM-generated); None if generation failed
-
+    references: list[SummaryReference] | None
     relevance: bool  # Keyword-based decision, deterministic
     matched_keywords: list[str]  # Keywords whose match decided relevance (empty => default applied)
+
+    @computed_field
+    @property
+    def summary(self) -> str | None:
+        return " ".join(r.text for r in self.references) if self.references else None
 
     @classmethod
     def from_segment(
@@ -156,7 +168,7 @@ class EnrichedSegment(DocumentSegment):
         segment: DocumentSegment,
         *,
         title: str | None,
-        summary: str | None,
+        references: list[SummaryReference] | None,
         relevance: bool,
         matched_keywords: list[str],
     ) -> "EnrichedSegment":
@@ -164,8 +176,8 @@ class EnrichedSegment(DocumentSegment):
         return cls(
             **segment.model_dump(),
             title=title,
-            summary=summary,
             relevance=relevance,
+            references=references,
             matched_keywords=matched_keywords,
         )
 

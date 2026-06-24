@@ -1,6 +1,7 @@
 import time
+import enum
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, create_model
 
 from pipeline.datatypes import (
     DocumentSegment,
@@ -9,12 +10,14 @@ from pipeline.datatypes import (
     EnrichmentErrorType,
     EnrichmentResult,
     SegmentationResult,
+    SummaryReference,
 )
 from llm import LLMProvider
 from logging_config import get_logger
 from pipeline.enrichment.keyword_relevance.prompt import TITLE_SUMMARY_SYSTEM_PROMPT
 from pipeline.enrichment.strategy import EnrichmentStrategy
 from pipeline.enrichment.utils import RelevanceKeywords, decide_relevance
+
 
 logger = get_logger(__name__)
 
@@ -41,11 +44,35 @@ class KeywordRelevanceOptions(BaseModel):
     enrich_irrelevant: bool = False
 
 
-class _TitleSummary(BaseModel):
-    """The title/summary pair as emitted by the LLM."""
+def build_title_reference_schema(valid_block_ids: list[int]) -> type[BaseModel]:
+    """LLM-output schema with block_ids constrained to this segment's blocks.
+
+    Every reference's block_ids are typed as an IntEnum of the segment's actual
+    block ids, so constrained decoding can only ground a reference in a block
+    that is really in the input -- the model cannot invent references. `title`
+    comes first so the model fixes the document type before summarizing.
+    """
+    ValidBlockId = enum.IntEnum(
+        "ValidBlockId", {f"id_{b_id}": b_id for b_id in valid_block_ids}
+    )
+    Reference = create_model(
+        "Reference",
+        text=(str, ...),
+        block_ids=(list[ValidBlockId], ...),
+    )
+    return create_model(
+        "ValidTitleReference",
+        title=(str, ...),
+        references=(list[Reference], ...),
+    )
+
+
+class TitleReference(BaseModel):
+    """Title + grounded references, parsed back from the (constrained) output."""
 
     title: str
-    summary: str
+    references: list[SummaryReference]
+
 
 
 # ============================================================================
@@ -100,14 +127,15 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
     ) -> tuple[EnrichedSegment, EnrichmentError | None]:
         """One segment: deterministic relevance first, then gated generation."""
         relevance, matched = decide_relevance(segment, self.keywords)
-        generated: _TitleSummary | None = None
+        generated: TitleReference | None = None
         error: EnrichmentError | None = None
         if relevance or self.options.enrich_irrelevant:
             generated, error = self._generate(segment)
+
         enriched = EnrichedSegment.from_segment(
             segment,
             title=generated.title if generated else None,
-            summary=generated.summary if generated else None,
+            references=generated.references if generated else None,
             relevance=relevance,
             matched_keywords=matched,
         )
@@ -115,11 +143,18 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
 
     def _generate(
         self, segment: DocumentSegment
-    ) -> tuple[_TitleSummary | None, EnrichmentError | None]:
+    ) -> tuple[TitleReference | None, EnrichmentError | None]:
         """One title/summary call; failures degrade to (None, scoped error)."""
+
+        block_ids = [block.block_id for block in segment.blocks]
+        if not block_ids:
+            return None, None
+
         payload = _segment_payload(segment, self.options.max_input_chars)
+        # Constrain block_ids to this segment's blocks (see builder docstring).
+        schema = build_title_reference_schema(block_ids)
         try:
-            return self._call_llm(payload), None
+            return self._call_llm(payload, schema), None
         except ValidationError as exc:
             logger.exception("Unusable title/summary for segment %s", segment.segment_id)
             return None, _segment_error(EnrichmentErrorType.INVALID_OUTPUT, exc, segment)
@@ -127,13 +162,13 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
             logger.exception("Title/summary call failed for segment %s", segment.segment_id)
             return None, _segment_error(EnrichmentErrorType.LLM_CALL_FAILED, exc, segment)
 
-    def _call_llm(self, payload: str) -> _TitleSummary:
-        """One schema-constrained provider call returning a _TitleSummary."""
+    def _call_llm(self, payload: str, schema: type[BaseModel]) -> TitleReference:
+        """One schema-constrained provider call returning a title + references."""
         start_time = time.perf_counter()
         response = self.provider.generate(
             payload,
             system=TITLE_SUMMARY_SYSTEM_PROMPT,
-            schema=_TitleSummary,
+            schema=schema,
             temperature=self.options.temperature,
         )
         logger.debug(
@@ -141,7 +176,7 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
             time.perf_counter() - start_time,
             response.timing_summary(),
         )
-        return _TitleSummary.model_validate_json(response.text)
+        return TitleReference.model_validate_json(response.text)
 
 
 # ============================================================================
@@ -150,13 +185,24 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
 
 
 def _segment_payload(segment: DocumentSegment, max_chars: int | None) -> str:
-    """The user prompt: the segment's joined text, head-bias truncated.
+    """The user prompt: the segment's blocks, each tagged with its block_id.
 
-    Type/title cues sit at the top of a document, so keeping the first
-    `max_chars` characters loses the least signal. A None cap keeps the full
-    text.
+    Every block is rendered as `[#<block_id>] <text>` so the model can ground
+    each reference's block_ids in the input (the `[#id]` markers). Type/title
+    cues sit at the top of a document, so truncation keeps the leading blocks
+    until `max_chars` is reached -- block-wise, never mid-block, but always at
+    least the first block. A None cap keeps every block.
     """
-    return segment.raw_text[:max_chars]
+    lines: list[str] = []
+    used = 0
+    for block in segment.blocks:
+        line = f"[#{block.block_id}] {block.text}"
+        if max_chars is not None and lines and used + len(line) > max_chars:
+            break
+        lines.append(line)
+        used += len(line) + 1  # +1 for the joining newline
+    text = "\n".join(lines)
+    return text[:max_chars] if max_chars is not None else text
 
 
 def _segment_error(
