@@ -54,7 +54,7 @@ def ocr_convert_pdf(
     if pdf_format_options is None:
         pdf_format_options = default_pdf_format_options()
 
-    stream = DocumentStream(name=file_name, stream=pdf_file)
+    stream = DocumentStream(name=file_name or "", stream=pdf_file)
 
     converter = DocumentConverter(format_options={InputFormat.PDF: pdf_format_options})
     result = converter.convert(stream)
@@ -74,8 +74,11 @@ def _build_pages(conversion_result: ConversionResult) -> list[PageContent]:
 
     # Collect blocks per page (the only thing that genuinely needs accumulation)
     blocks_by_page: dict[int, list[ContentBlock]] = defaultdict(list)
-    for item, _ in document.iterate_items():
-        for page_no, block in item_to_blocks(item, doc=document):
+    for item, idx in document.iterate_items():
+        for page_no, raw_block in item_to_blocks(item, doc=document):
+
+            # propagate raw blocks with unique document wide idx as id
+            block = ContentBlock(block_id=idx, **raw_block.model_dump())
             blocks_by_page[page_no].append(block)
 
     # TODO: Stitch together raw_text from blocks instead of exporting markdown

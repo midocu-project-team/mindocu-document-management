@@ -13,13 +13,22 @@ from docling_core.types.doc.document import (
     TextItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from pipeline.datatypes import BlockType, ContentBlock
+from pydantic import BaseModel
+from pipeline.datatypes import BlockType, BoundingBox
+
+class RawContentBlock(BaseModel):
+    text: str
+    block_type: BlockType
+    bbox: BoundingBox | None  # see BoundingBox: PDF points, bottom-left origin
+    source_ref: str | None = (
+        None  # Common reference ID for grouping related ContentBlocks (e.g., fragments of the same item)
+    )
 
 
 # MAIN MAPPING FUNCTION #
 def item_to_blocks(
     item: DocItem, doc: DoclingDocument
-) -> list[tuple[int, ContentBlock]]:
+) -> list[tuple[int, RawContentBlock]]:
     """Splits a DocItem into (page_no, ContentBlock) for each ProvenanceItem."""
 
     # Prefer TextItem (some elements inherit from Text and FloatingItem)
@@ -81,7 +90,7 @@ def _map_label(label: DocItemLabel) -> BlockType:
     return _LABEL_TO_BLOCKTYPE.get(label, BlockType.UNKNOWN)
 
 
-def _text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
+def _text_item_to_blocks(item: TextItem) -> list[tuple[int, RawContentBlock]]:
     """Splits a TextItem into (page_no, ContentBlock) for each ProvenanceItem."""
 
     text = item.text
@@ -93,7 +102,7 @@ def _text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
         blocks.append(
             (
                 prov.page_no,
-                ContentBlock(
+                RawContentBlock(
                     text=text[start:end],
                     block_type=block_type,
                     bbox=prov.bbox.as_tuple(),
@@ -105,7 +114,7 @@ def _text_item_to_blocks(item: TextItem) -> list[tuple[int, ContentBlock]]:
     return blocks
 
 
-def _floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBlock]]:
+def _floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, RawContentBlock]]:
     """
     Converts a non-textual DocItem into (page_no, ContentBlock) per prov.
 
@@ -119,7 +128,7 @@ def _floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBloc
         out.append(
             (
                 prov.page_no,
-                ContentBlock(
+                RawContentBlock(
                     text=(
                         text if i == 0 else ""
                     ),  # Following rectangles: only position, no text
@@ -132,7 +141,7 @@ def _floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, ContentBloc
     return out
 
 
-def _fallback_items_to_blocks(item: DocItem) -> list[tuple[int, ContentBlock]]:
+def _fallback_items_to_blocks(item: DocItem) -> list[tuple[int, RawContentBlock]]:
     """
     Generic handling for plain/unknown DocItems.
 
@@ -150,7 +159,7 @@ def _fallback_items_to_blocks(item: DocItem) -> list[tuple[int, ContentBlock]]:
         blocks.append(
             (
                 prov.page_no,
-                ContentBlock(
+                RawContentBlock(
                     text=(
                         text if i == 0 else ""
                     ),  # Following rectangles: only position, no text

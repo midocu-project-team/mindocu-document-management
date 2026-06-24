@@ -31,6 +31,8 @@ class PageExtractionErrorType(enum.StrEnum):
 # Task 1: Output as CaseFileDocument
 ###################################
 class ContentBlock(BaseModel):
+    block_id: int # Document-wide unique block index, assigned sequentially in reading order during page assembly.
+
     text: str
     block_type: BlockType
     bbox: BoundingBox | None  # see BoundingBox: PDF points, bottom-left origin
