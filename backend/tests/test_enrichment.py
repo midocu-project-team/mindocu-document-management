@@ -6,6 +6,7 @@ title/summary generation, per-segment degradation on failed calls. The LLM
 side runs against a canned fake provider, never a real backend.
 """
 
+import itertools
 import json
 
 from pydantic import BaseModel
@@ -32,7 +33,12 @@ from pipeline.enrichment.utils import decide_relevance
 # --------------------------------------------------------------------------
 
 CANNED_TITLE = "Ärztliche Stellungnahme Dr. Müller, 12.03.2024"
-CANNED_SUMMARY = "Eine sachliche Zusammenfassung des Dokuments."
+# The summary is now assembled from references; CANNED_SUMMARY is their join.
+CANNED_REFERENCES = [
+    {"text": "Aus dem Dokument gehe hervor, dass etwas vorliege.", "block_ids": [0]},
+    {"text": "Ferner werde Weiteres berichtet.", "block_ids": [0]},
+]
+CANNED_SUMMARY = " ".join(ref["text"] for ref in CANNED_REFERENCES)
 
 
 class FakeProvider(LLMProvider):
@@ -44,7 +50,7 @@ class FakeProvider(LLMProvider):
             text
             if text is not None
             else json.dumps(
-                {"title": CANNED_TITLE, "summary": CANNED_SUMMARY},
+                {"title": CANNED_TITLE, "references": CANNED_REFERENCES},
                 ensure_ascii=False,
             )
         )
@@ -65,8 +71,13 @@ class FakeProvider(LLMProvider):
         return LLMResponse(text=self.text)
 
 
+_block_ids = itertools.count()
+
+
 def make_block(text: str, block_type: BlockType = BlockType.HEADING) -> ContentBlock:
-    return ContentBlock(text=text, block_type=block_type, bbox=None)
+    return ContentBlock(
+        block_id=next(_block_ids), text=text, block_type=block_type, bbox=None
+    )
 
 
 def make_page(page_number: int, blocks: list[ContentBlock]) -> PageContent:
@@ -279,7 +290,10 @@ def test_payload_is_head_truncated_to_max_input_chars():
 
     strategy.enrich_segments(make_result([segment]))
 
-    assert provider.prompts == [segment.raw_text[:11]]
+    # Payload is block-tagged ("[#<id>] <text>") and capped to max_input_chars.
+    block = segment.blocks[0]
+    expected = f"[#{block.block_id}] {block.text}"[:11]
+    assert provider.prompts == [expected]
 
 
 def test_strategy_fills_result_metadata():

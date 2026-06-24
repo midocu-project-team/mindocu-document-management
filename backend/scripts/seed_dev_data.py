@@ -10,6 +10,7 @@ Imports only from ``api``/``pipeline`` (never from tests). Idempotency is not a
 goal -- each run creates a fresh demo case.
 """
 
+import itertools
 import uuid
 from datetime import datetime
 
@@ -18,7 +19,15 @@ from api.db.base import SessionLocal
 from api.repositories import CaseRepository, DocumentRepository
 from api.settings import get_settings
 from pipeline import Document, make_segment
-from pipeline.datatypes import BlockType, ContentBlock, EnrichedSegment, PageContent
+from pipeline.datatypes import (
+    BlockType,
+    ContentBlock,
+    EnrichedSegment,
+    PageContent,
+    SummaryReference,
+)
+
+_block_ids = itertools.count()
 
 
 def main() -> None:
@@ -61,14 +70,19 @@ def _build_demo_document(*, file_size_bytes: int) -> Document:
     relevant = EnrichedSegment.from_segment(
         make_segment(pages[0:2], [0.95]),
         title="Verfügung des Gerichts",
-        summary="Anordnung der Unterbringung mit Begründung.",
+        references=[
+            SummaryReference(
+                text="Anordnung der Unterbringung mit Begründung.",
+                block_ids=[pages[0].blocks[0].block_id],
+            )
+        ],
         relevance=True,
         matched_keywords=["Verfügung"],
     )
     irrelevant = EnrichedSegment.from_segment(
         make_segment(pages[2:4], [0.9]),
         title=None,
-        summary=None,
+        references=None,
         relevance=False,
         matched_keywords=["Prüfvermerk"],
     )
@@ -92,8 +106,8 @@ def _page(number: int, heading: str, body: str) -> PageContent:
         page_number=number,
         raw_text=f"{heading}\n{body}",
         blocks=[
-            ContentBlock(text=heading, block_type=BlockType.HEADING, bbox=(72, 700, 540, 740)),
-            ContentBlock(text=body, block_type=BlockType.PARAGRAPH, bbox=(72, 600, 540, 690)),
+            ContentBlock(block_id=next(_block_ids), text=heading, block_type=BlockType.HEADING, bbox=(72, 700, 540, 740)),
+            ContentBlock(block_id=next(_block_ids), text=body, block_type=BlockType.PARAGRAPH, bbox=(72, 600, 540, 690)),
         ],
         was_ocr_applied=False,
         confidence=0.95,

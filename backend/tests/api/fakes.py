@@ -7,6 +7,7 @@ segment per page, and the enricher marks the 'Verfügung' page relevant and the
 """
 
 import io
+import itertools
 
 from pipeline import (
     EnrichmentStrategy,
@@ -23,7 +24,10 @@ from pipeline.datatypes import (
     EnrichmentResult,
     PageContent,
     SegmentationResult,
+    SummaryReference,
 )
+
+_block_ids = itertools.count()
 
 
 class FakeReader(ReaderStrategy):
@@ -74,10 +78,20 @@ def _enrich(segment: DocumentSegment) -> EnrichedSegment:
         for page in segment.pages
         for block in page.blocks
     )
+    references = (
+        [
+            SummaryReference(
+                text="Anordnung der Unterbringung.",
+                block_ids=[segment.blocks[0].block_id],
+            )
+        ]
+        if relevant
+        else None
+    )
     return EnrichedSegment.from_segment(
         segment,
         title="Verfügung des Gerichts" if relevant else None,
-        summary="Anordnung der Unterbringung." if relevant else None,
+        references=references,
         relevance=relevant,
         matched_keywords=["Verfügung"] if relevant else ["Prüfvermerk"],
     )
@@ -88,8 +102,8 @@ def _page(number: int, heading: str, body: str) -> PageContent:
         page_number=number,
         raw_text=f"{heading}\n{body}",
         blocks=[
-            ContentBlock(text=heading, block_type=BlockType.HEADING, bbox=(72, 700, 540, 740)),
-            ContentBlock(text=body, block_type=BlockType.PARAGRAPH, bbox=(72, 600, 540, 690)),
+            ContentBlock(block_id=next(_block_ids), text=heading, block_type=BlockType.HEADING, bbox=(72, 700, 540, 740)),
+            ContentBlock(block_id=next(_block_ids), text=body, block_type=BlockType.PARAGRAPH, bbox=(72, 600, 540, 690)),
         ],
         was_ocr_applied=False,
         confidence=0.95,

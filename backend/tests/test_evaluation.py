@@ -6,6 +6,7 @@ conversion and the read-once segmentation cache), the unscored enrichment
 prediction and the reader config validation. No OCR and no real LLM anywhere.
 """
 
+import itertools
 import json
 
 import pytest
@@ -35,6 +36,9 @@ from pipeline import KeywordRelevanceEnrichmentStrategy, RelevanceKeywords
 # --------------------------------------------------------------------------
 
 
+_block_ids = itertools.count()
+
+
 def make_page(
     page_number: int,
     text: str | None = None,
@@ -44,7 +48,11 @@ def make_page(
     return PageContent(
         page_number=page_number,
         raw_text=text,
-        blocks=[ContentBlock(text=text, block_type=block_type, bbox=None)],
+        blocks=[
+            ContentBlock(
+                block_id=next(_block_ids), text=text, block_type=block_type, bbox=None
+            )
+        ],
         was_ocr_applied=False,
         confidence=None,
         width_pt=595.0,
@@ -81,7 +89,11 @@ class FakeProvider(LLMProvider):
         self.prompts.append(prompt)
         return LLMResponse(
             text=json.dumps(
-                {"title": "Titel", "summary": "Zusammenfassung."}, ensure_ascii=False
+                {
+                    "title": "Titel",
+                    "references": [{"text": "Zusammenfassung.", "block_ids": [0]}],
+                },
+                ensure_ascii=False,
             ),
             prompt_tokens=10,
             completion_tokens=5,
