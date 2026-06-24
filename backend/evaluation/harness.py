@@ -83,6 +83,14 @@ class SegmentationEvaluation:
 
 
 @dataclass(frozen=True)
+class SummaryReferenceRow:
+    """One block-grounded summary fragment: its text and the blocks it cites."""
+
+    text: str
+    block_ids: list[int]
+
+
+@dataclass(frozen=True)
 class EnrichedSegmentRow:
     """One enriched segment, reduced to what manual inspection needs."""
 
@@ -91,7 +99,8 @@ class EnrichedSegmentRow:
     relevance: bool
     matched_keywords: list[str]
     title: str | None
-    summary: str | None
+    summary: str | None  # the references' texts joined; full record kept in JSON
+    references: list[SummaryReferenceRow]  # per-fragment text + cited block_ids
 
 
 @dataclass(frozen=True)
@@ -305,6 +314,10 @@ def _enriched_row(segment: EnrichedSegment) -> EnrichedSegmentRow:
         matched_keywords=list(segment.matched_keywords),
         title=segment.title,
         summary=segment.summary,
+        references=[
+            SummaryReferenceRow(text=r.text, block_ids=list(r.block_ids))
+            for r in (segment.references or [])
+        ],
     )
 
 

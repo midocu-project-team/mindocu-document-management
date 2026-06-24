@@ -274,8 +274,13 @@ def test_predict_enrichment_reduces_segments_and_meters_usage():
     assert (row.n_segments, row.n_irrelevant, row.errors) == (2, 1, 0)
     assert row.segments[0].relevance is True
     assert row.segments[0].title == "Titel"
+    assert [(ref.text, ref.block_ids) for ref in row.segments[0].references] == [
+        ("Zusammenfassung.", [0])
+    ]
+    assert row.segments[0].summary == "Zusammenfassung."
     assert row.segments[1].relevance is False
     assert row.segments[1].title is None
+    assert row.segments[1].references == []  # irrelevant => no LLM call, no refs
     assert row.segments[1].matched_keywords == ["signaturprüfprotokoll"]
     assert row.usage.calls == 1  # the junk segment cost no LLM call
     assert row.usage.prompt_tokens == 10

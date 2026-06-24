@@ -10,12 +10,14 @@ from dataclasses import asdict
 from pathlib import Path
 
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from evaluation.harness import (
     EnrichmentPrediction,
     SegmentationEvaluation,
     SegmentationPrediction,
+    SummaryReferenceRow,
 )
 from evaluation.metrics import ReaderQuality
 
@@ -135,9 +137,10 @@ def render_enrichment_table(rows: list[EnrichmentPrediction]) -> Table:
 
 
 def render_enriched_segments_table(rows: list[EnrichmentPrediction]) -> Table:
-    """Per-segment detail: relevance, fired keywords, title and summary."""
+    """Per-segment detail: relevance, fired keywords, title and the grounded
+    summary references (one ``fragment [#block_ids]`` line per reference)."""
     table = Table(title="Enriched segments (detail)")
-    for col in ("strategy", "PDF", "#", "pages", "rel", "keywords", "title", "summary"):
+    for col in ("strategy", "PDF", "#", "pages", "rel", "keywords", "title", "references"):
         table.add_column(col)
     for r in rows:
         for index, seg in enumerate(r.segments, start=1):
@@ -149,7 +152,7 @@ def render_enriched_segments_table(rows: list[EnrichmentPrediction]) -> Table:
                 _fmt_match(seg.relevance),
                 ", ".join(seg.matched_keywords) or "-",
                 seg.title or "-",
-                _shorten(seg.summary),
+                _fmt_references(seg.references),
             )
     return table
 
@@ -223,3 +226,26 @@ def _shorten(text: str | None, limit: int = 80) -> str:
     if not text:
         return "-"
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _fmt_references(references: list[SummaryReferenceRow]) -> str:
+    """One line per reference: the (shortened) summary fragment and its blocks.
+
+    Lets the block grounding be eyeballed against the text; '-' when the segment
+    has no references (irrelevant, or generation failed). The JSON dump keeps the
+    full, untruncated references.
+    """
+    if not references:
+        return "-"
+    lines = "\n".join(
+        f"{_shorten(ref.text, 60)} {_fmt_block_ids(ref.block_ids)}"
+        for ref in references
+    )
+    # Escape so the [#id] brackets (and any brackets in the LLM text) render
+    # literally instead of being eaten as Rich markup tags.
+    return escape(lines)
+
+
+def _fmt_block_ids(block_ids: list[int]) -> str:
+    """The cited block ids as ``[#3, #5]``; ``[–]`` when a reference cites none."""
+    return "[" + ", ".join(f"#{b}" for b in block_ids) + "]" if block_ids else "[–]"
