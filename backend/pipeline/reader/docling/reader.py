@@ -74,12 +74,14 @@ def _build_pages(conversion_result: ConversionResult) -> list[PageContent]:
 
     # Collect blocks per page (the only thing that genuinely needs accumulation)
     blocks_by_page: dict[int, list[ContentBlock]] = defaultdict(list)
-    for item, idx in document.iterate_items():
+    idx_counter = 0
+    for item, _ in document.iterate_items():
         for page_no, raw_block in item_to_blocks(item, doc=document):
 
             # propagate raw blocks with unique document wide idx as id
-            block = ContentBlock(block_id=idx, **raw_block.model_dump())
+            block = ContentBlock(block_id=idx_counter, **raw_block.model_dump())
             blocks_by_page[page_no].append(block)
+            idx_counter += 1
 
     # TODO: Stitch together raw_text from blocks instead of exporting markdown
     # because export_to_markdown(page_no) sometimes contains text from page_no+1
