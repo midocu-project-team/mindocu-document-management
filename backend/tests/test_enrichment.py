@@ -8,6 +8,7 @@ side runs against a canned fake provider, never a real backend.
 
 import itertools
 import json
+import uuid
 
 from pydantic import BaseModel
 
@@ -102,9 +103,12 @@ def make_segment(pages: list[PageContent]) -> DocumentSegment:
     )
 
 
+DOC_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 def make_result(segments: list[DocumentSegment]) -> SegmentationResult:
     return SegmentationResult(
-        document_id="doc-1",
+        document_id=DOC_ID,
         segments=segments,
         segmentation_method="llm",
         errors=[],
@@ -304,7 +308,7 @@ def test_strategy_fills_result_metadata():
 
     result = strategy.enrich_segments(make_result([]))
 
-    assert result.document_id == "doc-1"
+    assert result.document_id == DOC_ID
     assert result.enrichment_method == "llm+keyword"
     assert result.relevance_keywords == ["urteil", "signaturprüfprotokoll"]
     assert result.errors == []

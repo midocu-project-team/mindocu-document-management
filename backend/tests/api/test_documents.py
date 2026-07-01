@@ -1,5 +1,7 @@
 """Upload + processing + read endpoints (pipeline stubbed, queue inline)."""
 
+import uuid
+
 from conftest import PDF_BYTES
 
 
@@ -85,4 +87,4 @@ def test_pdf_is_served(client):
 
 
 def test_unknown_document_returns_404(client):
-    assert client.get("/documents/does-not-exist").status_code == 404
+    assert client.get(f"/documents/{uuid.uuid4()}").status_code == 404
