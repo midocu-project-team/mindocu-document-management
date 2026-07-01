@@ -1023,6 +1023,77 @@ body.mindocu-resizing * {
     height 0.18s ease;
 }
 
+/* Reference-hit navigation bar shown over the PDF when a reference is clicked. */
+.mindocu-reference-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 8px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 12px;
+  background: var(--mindocu-surface-2);
+  border: 1px solid var(--mindocu-line);
+  box-shadow: var(--mindocu-shadow);
+  font-size: 0.86rem;
+  color: var(--mindocu-text);
+}
+
+.mindocu-reference-bar-counter {
+  font-weight: 700;
+  color: var(--mindocu-text-strong);
+  white-space: nowrap;
+}
+
+.mindocu-reference-bar-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mindocu-reference-bar-page {
+  color: var(--mindocu-blue);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mindocu-reference-bar-preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mindocu-muted);
+}
+
+.mindocu-reference-bar-nav,
+.mindocu-reference-bar-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mindocu-text);
+  cursor: pointer;
+}
+
+.mindocu-reference-bar-nav:hover:not(:disabled),
+.mindocu-reference-bar-close:hover {
+  background: var(--mindocu-surface);
+}
+
+.mindocu-reference-bar-nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mindocu-reference-bar-close {
+  color: var(--mindocu-muted);
+}
+
 .mindocu-pdf-loading {
   min-height: 280px;
   border-radius: 20px;

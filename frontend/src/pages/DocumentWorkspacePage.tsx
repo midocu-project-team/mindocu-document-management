@@ -7,6 +7,7 @@ import { InnerSidebarLeft } from '@/components/workspace/InnerSidebarLeft';
 import { InnerSidebarRight } from '@/components/workspace/InnerSidebarRight';
 import { WorkspaceToolbar } from '@/components/workspace/WorkspaceToolbar';
 import { PdfViewport, type PdfViewportHandle } from '@/components/workspace/PdfViewport';
+import { BlockReferenceBar } from '@/components/workspace/BlockReferenceBar';
 import {
   findSegmentIndexForPage,
   getNearestVisiblePage,
@@ -24,8 +25,8 @@ import type { SummaryReference } from '@/api/types';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
-  fetchBlock,
   prefetchSegmentDetail,
+  useBlocks,
   useCaseDetail,
   useDocumentSegments,
   useSegmentDetail,
@@ -34,6 +35,7 @@ import {
 
 const NO_SEGMENTS: Segment[] = [];
 const NO_REFERENCES: SummaryReference[] = [];
+const NO_BLOCK_IDS: number[] = [];
 
 const LEFT_SIDEBAR = { initial: 284, min: 220, max: 560, storageKey: 'mindocu:left-sidebar-width' };
 const RIGHT_SIDEBAR = {
@@ -76,6 +78,10 @@ export function DocumentWorkspacePage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [showRelevantSegments, setShowRelevantSegments] = useState(true);
   const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false);
+  // Source blocks ("hits") of the reference the user clicked, and which one is
+  // active. `null` => the reference bar is closed.
+  const [activeReferenceBlockIds, setActiveReferenceBlockIds] = useState<number[] | null>(null);
+  const [activeHitIndex, setActiveHitIndex] = useState(0);
   const pdfViewportRef = useRef<PdfViewportHandle>(null);
 
   const leftResize = useResizableWidth(LEFT_SIDEBAR.initial, { ...LEFT_SIDEBAR, edge: 'left' });
@@ -114,6 +120,24 @@ export function DocumentWorkspacePage() {
   // title/summary already come from the summary list above.
   const { data: segmentDetail } = useSegmentDetail(activeSegment?.id);
   const references = segmentDetail?.references ?? NO_REFERENCES;
+
+  // Reference "hits": the source blocks of the clicked reference, loaded reactively
+  // (one slot per block_id, `undefined` while loading). The active hit drives the
+  // page jump + the highlight overlay; `activeReferenceBlockIds === null` => closed.
+  const referenceHits = useBlocks(activeDocument?.id, activeReferenceBlockIds ?? NO_BLOCK_IDS);
+  const activeHit = referenceHits[activeHitIndex];
+  const activeHitPage = activeHit?.page_number;
+  const highlight = activeHit?.bbox
+    ? { pageNumber: activeHit.page_number, bbox: activeHit.bbox }
+    : null;
+
+  // Scroll the PDF to the active hit's page -- both when the user steps through
+  // hits and when the active block finishes loading (page becomes known).
+  useEffect(() => {
+    if (activeHitPage) {
+      pdfViewportRef.current?.goToPage(activeHitPage);
+    }
+  }, [activeHitPage, activeHitIndex]);
 
   // Manual relevance override for the currently selected segment (kebab menu in
   // the left toolbar). Two-way toggle; the mutation refreshes the segment list
@@ -173,6 +197,7 @@ export function DocumentWorkspacePage() {
     setCurrentPage(1);
     setSelectedSegmentIndex(0);
     setSearchQuery('');
+    setActiveReferenceBlockIds(null);
   };
 
   const handleSelectSegment = (index: number) => {
@@ -188,6 +213,9 @@ export function DocumentWorkspacePage() {
       searchQuery,
     );
     setSelectedSegmentIndex(index);
+    // Switching segment changes the right-sidebar references, so close any open
+    // hit bar from the previous segment's reference.
+    setActiveReferenceBlockIds(null);
 
     const segment = activeSegments[index];
     if (!segment) {
@@ -233,18 +261,20 @@ export function DocumentWorkspacePage() {
     queryClient,
   ]);
 
-  // Clicking a reference sentence fetches its source block(s). For now the block
-  // content is only logged; a highlight/scroll UI will replace this later.
+  // Clicking a reference sentence opens the hit bar over the PDF: it loads the
+  // reference's source blocks and jumps to / highlights the first one.
   const handleReferenceClick = (blockIds: number[]) => {
-    if (!activeDocument) {
+    if (blockIds.length === 0) {
       return;
     }
-    blockIds.forEach((blockId) => {
-      fetchBlock(queryClient, activeDocument.id, blockId)
-        .then((block) => console.log('Referenz-Block', blockId, block))
-        .catch((error) => console.error('Block konnte nicht geladen werden', blockId, error));
-    });
+    setActiveReferenceBlockIds(blockIds);
+    setActiveHitIndex(0);
   };
+
+  const handlePrevHit = () => setActiveHitIndex((index) => Math.max(0, index - 1));
+  const handleNextHit = () =>
+    setActiveHitIndex((index) => Math.min(referenceHits.length - 1, index + 1));
+  const handleCloseReferenceBar = () => setActiveReferenceBlockIds(null);
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value));
 
@@ -381,6 +411,14 @@ export function DocumentWorkspacePage() {
               />
             </div>
 
+            <BlockReferenceBar
+              hits={referenceHits}
+              activeIndex={activeHitIndex}
+              onPrev={handlePrevHit}
+              onNext={handleNextHit}
+              onClose={handleCloseReferenceBar}
+            />
+
             <PdfViewport
               ref={pdfViewportRef}
               key={activeDocument.id}
@@ -392,6 +430,7 @@ export function DocumentWorkspacePage() {
               onPageCountChange={setReportedPageCount}
               onZoomIn={() => setZoom((value) => clampZoom(value + 0.08))}
               onZoomOut={() => setZoom((value) => clampZoom(value - 0.08))}
+              highlight={highlight}
             />
           </main>
 
