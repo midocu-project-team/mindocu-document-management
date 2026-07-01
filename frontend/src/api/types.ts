@@ -38,7 +38,38 @@ export interface DocumentSummary {
   file_name: string;
   processing_status: ProcessingStatus;
   total_pages: number;
-  segments: SegmentSummary[];
+  segment_count: number;
+}
+
+/** One grounded reference of a segment summary (a sentence + its source blocks). */
+export interface SummaryReference {
+  text: string;
+  block_ids: number[];
+}
+
+/** Full detail of a single segment (GET /segments/{id}) incl. references. */
+export interface SegmentDetail {
+  segment_id: string;
+  document_id: string;
+  start_page: number;
+  end_page: number;
+  confidence: number | null;
+  title: string | null;
+  summary: string | null;
+  relevance: boolean;
+  matched_keywords: string[];
+  references: SummaryReference[];
+}
+
+/** One content block (GET /documents/{id}/blocks/{block_id}). */
+export interface BlockOut {
+  document_id: string;
+  block_id: number;
+  page_number: number;
+  text: string;
+  block_type: string;
+  bbox: [number, number, number, number] | null;
+  source_ref: string | null;
 }
 
 export interface CaseDetail {

@@ -3,18 +3,51 @@
  * local CasesContext. Polling lists/status use a 10s refetch interval.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { del, getJson, patchJson, postForm, postJson } from './client';
-import type { CaseDetail, CaseStatus, CaseSummary, DocumentStatus } from './types';
+import type {
+  BlockOut,
+  CaseDetail,
+  CaseStatus,
+  CaseSummary,
+  DocumentStatus,
+  SegmentDetail,
+  SegmentSummary,
+} from './types';
 
 const POLL_INTERVAL_MS = 10_000;
+
+// Segment/block detail barely changes once processed, so keep it fresh for a
+// while: this makes prefetched neighbors a real cache hit on click (no refetch).
+const DETAIL_STALE_MS = 5 * 60_000;
 
 export const caseKeys = {
   all: ['cases'] as const,
   detail: (caseId: string) => ['cases', caseId, 'detail'] as const,
   status: (caseId: string) => ['cases', caseId, 'status'] as const,
 };
+
+export const documentKeys = {
+  segments: (documentId: string) => ['documents', documentId, 'segments'] as const,
+  block: (documentId: string, blockId: number) =>
+    ['documents', documentId, 'blocks', blockId] as const,
+};
+
+export const segmentKeys = {
+  detail: (segmentId: string) => ['segments', segmentId, 'detail'] as const,
+};
+
+// Shared fetchers so the hooks and the prefetch/imperative helpers below hit the
+// exact same query key + fetcher (no drift between fetch and prefetch).
+const fetchDocumentSegments = (documentId: string) =>
+  getJson<SegmentSummary[]>(`/documents/${documentId}/segments`);
+
+const fetchSegmentDetail = (segmentId: string) =>
+  getJson<SegmentDetail>(`/segments/${segmentId}`);
+
+const fetchBlockById = (documentId: string, blockId: number) =>
+  getJson<BlockOut>(`/documents/${documentId}/blocks/${blockId}`);
 
 /** All cases, polled every 10s (homepage list). */
 export function useCases() {
@@ -84,5 +117,43 @@ export function useUploadDocuments(caseId: string | undefined) {
         queryClient.invalidateQueries({ queryKey: caseKeys.status(caseId) });
       }
     },
+  });
+}
+
+/** Segment summaries of one document (drives the left sidebar list). */
+export function useDocumentSegments(documentId: string | undefined) {
+  return useQuery({
+    queryKey: documentKeys.segments(documentId ?? ''),
+    queryFn: () => fetchDocumentSegments(documentId as string),
+    enabled: Boolean(documentId),
+    staleTime: DETAIL_STALE_MS,
+  });
+}
+
+/** Full detail of one segment incl. references/block_ids (loaded on select). */
+export function useSegmentDetail(segmentId: string | undefined) {
+  return useQuery({
+    queryKey: segmentKeys.detail(segmentId ?? ''),
+    queryFn: () => fetchSegmentDetail(segmentId as string),
+    enabled: Boolean(segmentId),
+    staleTime: DETAIL_STALE_MS,
+  });
+}
+
+/** Warm the cache for a segment's detail -- used to prefetch the ±2 neighbors. */
+export function prefetchSegmentDetail(queryClient: QueryClient, segmentId: string) {
+  return queryClient.prefetchQuery({
+    queryKey: segmentKeys.detail(segmentId),
+    queryFn: () => fetchSegmentDetail(segmentId),
+    staleTime: DETAIL_STALE_MS,
+  });
+}
+
+/** Fetch (and cache) a single block by id -- imperative, for on-click lookups. */
+export function fetchBlock(queryClient: QueryClient, documentId: string, blockId: number) {
+  return queryClient.fetchQuery({
+    queryKey: documentKeys.block(documentId, blockId),
+    queryFn: () => fetchBlockById(documentId, blockId),
+    staleTime: DETAIL_STALE_MS,
   });
 }
