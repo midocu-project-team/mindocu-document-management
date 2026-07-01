@@ -9,6 +9,11 @@ type BlockHighlightLayerProps = {
   heightPt: number;
   /** Rendered page width in CSS pixels (PDF_BASE_WIDTH * zoom). */
   renderedWidthPx: number;
+  /**
+   * `active` = the currently focused hit (solid, prominent); `marker` = a faint
+   * dashed pre-mark for the segment's other reference blocks. Defaults to active.
+   */
+  variant?: 'active' | 'marker';
 };
 
 // Small buffer in px
@@ -25,6 +30,7 @@ export function BlockHighlightLayer({
   widthPt,
   heightPt,
   renderedWidthPx,
+  variant = 'active',
 }: BlockHighlightLayerProps) {
   if (widthPt <= 0 || heightPt <= 0) {
     return null;
@@ -39,5 +45,10 @@ export function BlockHighlightLayer({
     height: (y1 - y0) * scale + BUFFER,
   };
 
-  return <div className="mindocu-block-highlight" style={style} aria-hidden="true" />;
+  const className =
+    variant === 'marker'
+      ? 'mindocu-block-highlight mindocu-block-highlight--marker'
+      : 'mindocu-block-highlight';
+
+  return <div className={className} style={style} aria-hidden="true" />;
 }

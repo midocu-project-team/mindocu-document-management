@@ -16,6 +16,7 @@ export type PdfViewportHandle = {
 };
 
 type PageDimensions = { widthPt: number; heightPt: number };
+type BlockMarker = { pageNumber: number; bbox: BoundingBox; blockId: number };
 
 type PdfViewportProps = {
   pdfUrl?: string | null;
@@ -29,6 +30,9 @@ type PdfViewportProps = {
   // The block to highlight (its page + bbox in PDF points). The page is scrolled
   // into view by the caller; this component only draws the overlay rectangle.
   highlight?: { pageNumber: number; bbox: BoundingBox } | null;
+  // Faint dashed pre-marks for the segment's other reference blocks, so all
+  // highlightable spots are visible even before their reference is opened.
+  markers?: BlockMarker[];
 };
 
 const PDF_BASE_WIDTH = 720;
@@ -51,6 +55,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     onZoomIn,
     onZoomOut,
     highlight,
+    markers,
   },
   ref,
 ) {
@@ -209,6 +214,20 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
                             />
                           }
                         />
+                        {pageDimensions[pageNumber]
+                          ? (markers ?? [])
+                              .filter((marker) => marker.pageNumber === pageNumber)
+                              .map((marker) => (
+                                <BlockHighlightLayer
+                                  key={marker.blockId}
+                                  variant="marker"
+                                  bbox={marker.bbox}
+                                  widthPt={pageDimensions[pageNumber].widthPt}
+                                  heightPt={pageDimensions[pageNumber].heightPt}
+                                  renderedWidthPx={pageWidth}
+                                />
+                              ))
+                          : null}
                         {highlight?.pageNumber === pageNumber && pageDimensions[pageNumber] ? (
                           <BlockHighlightLayer
                             bbox={highlight.bbox}

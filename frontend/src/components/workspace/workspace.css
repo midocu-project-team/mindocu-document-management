@@ -1023,6 +1023,18 @@ body.mindocu-resizing * {
     height 0.18s ease;
 }
 
+/* Faint dashed pre-mark: all reference spots of the segment, before their
+   reference is opened. Kept subtle so the active (solid) highlight stands out. */
+.mindocu-block-highlight--marker {
+  border-width: 1px;
+  border-style: dashed;
+  border-color: rgba(51, 72, 201, 0.45);
+  background: rgba(51, 72, 201, 0.05);
+  border-radius: 2px;
+  box-shadow: none;
+  transition: none;
+}
+
 /* Reference-hit navigation bar shown over the PDF when a reference is clicked. */
 .mindocu-reference-bar {
   display: flex;

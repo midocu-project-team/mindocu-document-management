@@ -21,7 +21,7 @@ import {
   toWorkspaceDocument,
 } from '@/utils/workspaceMappers';
 import type { Segment } from '@/types/segment';
-import type { SummaryReference } from '@/api/types';
+import type { BoundingBox, SummaryReference } from '@/api/types';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
@@ -123,13 +123,26 @@ export function DocumentWorkspacePage() {
 
   // Reference "hits": the source blocks of the clicked reference, loaded reactively
   // (one slot per block_id, `undefined` while loading). The active hit drives the
-  // page jump + the highlight overlay; `activeReferenceBlockIds === null` => closed.
+  // page jump + the strong highlight; `activeReferenceBlockIds === null` => closed.
   const referenceHits = useBlocks(activeDocument?.id, activeReferenceBlockIds ?? NO_BLOCK_IDS);
   const activeHit = referenceHits[activeHitIndex];
   const activeHitPage = activeHit?.page_number;
   const highlight = activeHit?.bbox
     ? { pageNumber: activeHit.page_number, bbox: activeHit.bbox }
     : null;
+
+  // Faint dashed pre-marks for the other blocks of the *clicked* reference (all
+  // of its block_ids except the active hit, which gets the strong highlight on
+  // top), so every spot that reference points to is visible while stepping.
+  const markers = useMemo(() => {
+    const list: { pageNumber: number; bbox: BoundingBox; blockId: number }[] = [];
+    referenceHits.forEach((block) => {
+      if (block && block.bbox && block.block_id !== activeHit?.block_id) {
+        list.push({ pageNumber: block.page_number, bbox: block.bbox, blockId: block.block_id });
+      }
+    });
+    return list;
+  }, [referenceHits, activeHit?.block_id]);
 
   // Scroll the PDF to the active hit's page -- both when the user steps through
   // hits and when the active block finishes loading (page becomes known).
@@ -431,6 +444,7 @@ export function DocumentWorkspacePage() {
               onZoomIn={() => setZoom((value) => clampZoom(value + 0.08))}
               onZoomOut={() => setZoom((value) => clampZoom(value - 0.08))}
               highlight={highlight}
+              markers={markers}
             />
           </main>
 
