@@ -440,6 +440,7 @@ export function DocumentWorkspacePage() {
               pdfUrl={activeDocument.pdfUrl}
               currentPage={currentPage}
               visiblePages={visiblePages}
+              totalPages={pageCount}
               zoom={zoom}
               onPageChange={handlePageChange}
               onPageCountChange={setReportedPageCount}

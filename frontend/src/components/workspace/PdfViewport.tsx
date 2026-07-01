@@ -22,6 +22,9 @@ type PdfViewportProps = {
   pdfUrl?: string | null;
   currentPage: number;
   visiblePages: number[];
+  // Full page count of the document (not the filtered subset) -- shown as the
+  // "/ N" total so the counter reflects real page numbers even when filtering.
+  totalPages: number;
   zoom: number;
   onPageChange: (page: number) => void;
   onPageCountChange: (pageCount: number) => void;
@@ -49,6 +52,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     pdfUrl,
     currentPage,
     visiblePages,
+    totalPages,
     zoom,
     onPageChange,
     onPageCountChange,
@@ -68,7 +72,6 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
   const [pageDimensions, setPageDimensions] = useState<Record<number, PageDimensions>>({});
 
   const renderedPages = visiblePages;
-  const displayPageCount = visiblePages.length;
   const pageWidth = Math.round(PDF_BASE_WIDTH * zoom);
   const visibleKey = renderedPages.join(',');
 
@@ -99,20 +102,6 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
       onPageChangeRef.current(page);
     }
   };
-
-  const getVisiblePageIndex = useCallback(
-    (page: number): number => {
-      return renderedPages.indexOf(page);
-    },
-    [renderedPages],
-  );
-
-  const getVirtualCurrentPage = useCallback(() => {
-    const idx = getVisiblePageIndex(currentPage);
-    return idx >= 0 ? idx + 1 : 1;
-  }, [currentPage, getVisiblePageIndex]);
-
-  const virtualCurrent = getVirtualCurrentPage();
 
   const goToPage = useCallback(
     (page: number, behavior: ScrollBehavior = 'auto') => {
@@ -250,9 +239,9 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
 
       <div className="mindocu-page-controls" aria-label="Seitensteuerung">
         <div className="mindocu-page-counter">
-          <div className="mindocu-page-counter-current">{virtualCurrent}</div>
+          <div className="mindocu-page-counter-current">{currentPage}</div>
         </div>
-        <div className="mindocu-page-counter-total">{displayPageCount}</div>
+        <div className="mindocu-page-counter-total">{totalPages}</div>
         <button
           type="button"
           className="mindocu-page-control"
