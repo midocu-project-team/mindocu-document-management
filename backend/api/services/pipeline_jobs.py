@@ -12,6 +12,7 @@ out-of-process consumer/worker -- can reuse it verbatim.
 import io
 import queue
 import threading
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,7 +41,7 @@ _STAGE_STATUS = {
 class PipelineJob:
     """A unit of work: process one uploaded PDF into a stored ``Document``."""
 
-    document_id: str
+    document_id: uuid.UUID
     pdf_path: str
     file_name: str
 
@@ -130,7 +131,7 @@ class PipelineJobQueue:
 
 
 def _record_stage(
-    session: Session, repo: DocumentRepository, document_id: str, stage: str
+    session: Session, repo: DocumentRepository, document_id: uuid.UUID, stage: str
 ) -> None:
     """Commits a stage status update so pollers see progress immediately."""
     repo.set_status(document_id, _STAGE_STATUS[stage])

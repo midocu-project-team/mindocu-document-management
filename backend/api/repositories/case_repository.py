@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Case
+from api.db.models import Case, DocumentRow
 
 
 class CaseRepository:
@@ -31,6 +31,18 @@ class CaseRepository:
 
     def get(self, case_id: uuid.UUID) -> Case | None:
         return self.session.get(Case, case_id)
+
+    def get_with_segments(self, case_id: uuid.UUID) -> Case | None:
+        """A case with its documents and each document's segments eagerly loaded.
+
+        Segments only -- not pages/blocks -- so the detail view stays slim.
+        """
+        statement = (
+            select(Case)
+            .where(Case.id == case_id)
+            .options(selectinload(Case.documents).selectinload(DocumentRow.segments))
+        )
+        return self.session.scalars(statement).first()
 
     def rename(self, case: Case, name: str) -> None:
         case.name = name

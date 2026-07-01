@@ -54,11 +54,11 @@ class DocumentService:
         """Returns the case (with its documents) for status polling."""
         return self._require_case(case_id)
 
-    def get_document_full(self, document_id: str) -> Document:
+    def get_document_full(self, document_id: uuid.UUID) -> Document:
         """Rebuilds the full ``Document`` (pages + blocks) for the detail view."""
-        return self.documents.load_document(self.documents.require(document_id))
+        return self.documents.load_document(document_id)
 
-    def get_pdf(self, document_id: str) -> tuple[DocumentRow, Path]:
+    def get_pdf(self, document_id: uuid.UUID) -> tuple[DocumentRow, Path]:
         """The document row plus its on-disk PDF path."""
         row = self.documents.require(document_id)
         return row, Path(row.pdf_path)
@@ -68,7 +68,7 @@ class DocumentService:
     def _store_one(self, case_id: uuid.UUID, upload: UploadFile) -> DocumentRow:
         data = upload.file.read()
         _validate_pdf(upload.filename, data)
-        document_id = str(uuid.uuid4())
+        document_id = uuid.uuid4()
         path = storage.save_pdf(case_id, document_id, data, self.settings.storage_dir)
         return self.documents.create_pending(
             document_id=document_id,

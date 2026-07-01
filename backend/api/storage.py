@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def save_pdf(
-    case_id: uuid.UUID, document_id: str, data: bytes, storage_dir: Path
+    case_id: uuid.UUID, document_id: uuid.UUID, data: bytes, storage_dir: Path
 ) -> Path:
     """Writes ``data`` to the document's PDF path, creating the case dir."""
     destination = pdf_path(case_id, document_id, storage_dir)
@@ -20,7 +20,7 @@ def save_pdf(
     return destination
 
 
-def pdf_path(case_id: uuid.UUID, document_id: str, storage_dir: Path) -> Path:
+def pdf_path(case_id: uuid.UUID, document_id: uuid.UUID, storage_dir: Path) -> Path:
     """The on-disk path for a document's PDF (no I/O)."""
     return storage_dir / str(case_id) / f"{document_id}.pdf"
 

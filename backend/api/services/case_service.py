@@ -28,7 +28,11 @@ class CaseService:
         return self.cases.list_with_documents()
 
     def get_case(self, case_id: uuid.UUID) -> Case:
-        return self._require(case_id)
+        """The case with its documents + segments (for the detail view)."""
+        case = self.cases.get_with_segments(case_id)
+        if case is None:
+            raise CaseNotFoundError(case_id)
+        return case
 
     def rename_case(self, case_id: uuid.UUID, name: str) -> Case:
         case = self._require(case_id)
