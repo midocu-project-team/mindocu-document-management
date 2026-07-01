@@ -29,6 +29,7 @@ import {
   useCaseDetail,
   useDocumentSegments,
   useSegmentDetail,
+  useUpdateSegmentRelevance,
 } from '@/api/hooks';
 
 const NO_SEGMENTS: Segment[] = [];
@@ -113,6 +114,17 @@ export function DocumentWorkspacePage() {
   // title/summary already come from the summary list above.
   const { data: segmentDetail } = useSegmentDetail(activeSegment?.id);
   const references = segmentDetail?.references ?? NO_REFERENCES;
+
+  // Manual relevance override for the currently selected segment (kebab menu in
+  // the left toolbar). Two-way toggle; the mutation refreshes the segment list
+  // so the card's relevance styling + the relevant/irrelevant filters update.
+  const updateRelevance = useUpdateSegmentRelevance(activeDocument?.id);
+  const handleToggleActiveSegmentRelevance = () => {
+    if (!activeSegment) {
+      return;
+    }
+    updateRelevance.mutate({ segmentId: activeSegment.id, relevance: !activeSegment.relevant });
+  };
 
   // The PDF's reported count wins once loaded; until then fall back to the
   // document metadata so the visible-page list isn't briefly clamped.
@@ -347,6 +359,9 @@ export function DocumentWorkspacePage() {
               query={searchQuery}
               onQueryChange={setSearchQuery}
               onClearQuery={() => setSearchQuery('')}
+              activeSegment={activeSegment}
+              onToggleActiveSegmentRelevance={handleToggleActiveSegmentRelevance}
+              isRelevanceUpdating={updateRelevance.isPending}
             />
           </div>
 

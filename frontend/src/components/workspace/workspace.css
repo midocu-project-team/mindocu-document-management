@@ -395,6 +395,15 @@ body.mindocu-resizing * {
   border-radius: 12px;
 }
 
+.mindocu-leftbar-toolbar .mindocu-segment-actions {
+  flex-shrink: 0;
+}
+
+.mindocu-leftbar-toolbar .mindocu-segment-actions-trigger {
+  min-height: 38px;
+  border-radius: 12px;
+}
+
 .mindocu-searchbar {
   flex: 1;
   min-width: 0;
@@ -586,6 +595,77 @@ body.mindocu-resizing * {
 .mindocu-segment-filter-action:focus-visible {
   outline: none;
   background: rgba(51, 72, 201, 0.08);
+}
+
+.mindocu-segment-actions {
+  position: relative;
+}
+
+.mindocu-segment-actions-trigger {
+  border: 0;
+  cursor: pointer;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(245, 247, 250, 0.96);
+  color: var(--mindocu-muted);
+}
+
+.mindocu-segment-actions-trigger.is-open,
+.mindocu-segment-actions-trigger:hover,
+.mindocu-segment-actions-trigger:focus-visible {
+  outline: none;
+  color: var(--mindocu-text-strong);
+  box-shadow: 0 0 0 3px rgba(51, 72, 201, 0.11);
+}
+
+.mindocu-segment-actions-trigger:disabled {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.mindocu-segment-actions-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--mindocu-line);
+  background: #ffffff;
+  box-shadow: var(--mindocu-shadow);
+}
+
+.mindocu-segment-actions-item {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--mindocu-text-strong);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mindocu-segment-actions-item:hover,
+.mindocu-segment-actions-item:focus-visible {
+  outline: none;
+  background: rgba(51, 72, 201, 0.08);
+}
+
+.mindocu-segment-actions-item:disabled {
+  cursor: default;
+  opacity: 0.6;
+  background: transparent;
 }
 
 .mindocu-segment-list {
@@ -1251,11 +1331,13 @@ body.mindocu-resizing * {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.dark .mindocu-segment-filter-trigger {
+.dark .mindocu-segment-filter-trigger,
+.dark .mindocu-segment-actions-trigger {
   background: rgba(255, 255, 255, 0.05);
 }
 
 .dark .mindocu-segment-filter-menu,
+.dark .mindocu-segment-actions-menu,
 .dark .mindocu-toolbar-pill.is-open,
 .dark .mindocu-toolbar-dropdown-menu {
   background: var(--mindocu-surface-2);

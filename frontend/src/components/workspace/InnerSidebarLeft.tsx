@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { SearchToolbar } from './SearchToolbar';
+import { SegmentActionsMenu } from './SegmentActionsMenu';
 import { SegmentFilterDropdown } from './SegmentFilterDropdown';
 import { formatPageRange, isSegmentShown } from '@/utils/segmentUtils';
 import { SEGMENT_TITLE_FALLBACK } from '@/utils/workspaceMappers';
@@ -16,6 +17,9 @@ type InnerSidebarLeftProps = {
   query: string;
   onQueryChange: (query: string) => void;
   onClearQuery: () => void;
+  activeSegment: Segment | undefined;
+  onToggleActiveSegmentRelevance: () => void;
+  isRelevanceUpdating: boolean;
 };
 
 export function InnerSidebarLeft({
@@ -29,6 +33,9 @@ export function InnerSidebarLeft({
   query,
   onQueryChange,
   onClearQuery,
+  activeSegment,
+  onToggleActiveSegmentRelevance,
+  isRelevanceUpdating,
 }: InnerSidebarLeftProps) {
   const segmentListRef = useRef<HTMLDivElement | null>(null);
 
@@ -62,6 +69,12 @@ export function InnerSidebarLeft({
             onQueryChange={onQueryChange}
             onClear={onClearQuery}
             resultCount={filteredSegments.length}
+          />
+
+          <SegmentActionsMenu
+            segment={activeSegment}
+            onToggleRelevance={onToggleActiveSegmentRelevance}
+            isPending={isRelevanceUpdating}
           />
         </div>
 

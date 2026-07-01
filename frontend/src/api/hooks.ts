@@ -140,6 +140,26 @@ export function useSegmentDetail(segmentId: string | undefined) {
   });
 }
 
+/**
+ * Manually flip a segment's relevance (PATCH /segments/{id}); does not re-run
+ * enrichment. The PATCH returns the full detail, so we seed the detail cache
+ * with it directly and invalidate the document's segment list (relevance drives
+ * the left list + the relevant/irrelevant filters).
+ */
+export function useUpdateSegmentRelevance(documentId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ segmentId, relevance }: { segmentId: string; relevance: boolean }) =>
+      patchJson<SegmentDetail>(`/segments/${segmentId}`, { relevance }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(segmentKeys.detail(updated.segment_id), updated);
+      if (documentId) {
+        queryClient.invalidateQueries({ queryKey: documentKeys.segments(documentId) });
+      }
+    },
+  });
+}
+
 /** Warm the cache for a segment's detail -- used to prefetch the ±2 neighbors. */
 export function prefetchSegmentDetail(queryClient: QueryClient, segmentId: string) {
   return queryClient.prefetchQuery({
