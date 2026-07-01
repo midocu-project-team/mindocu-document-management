@@ -20,6 +20,7 @@ from pipeline.enrichment.utils import RelevanceKeywords, decide_relevance
 
 
 logger = get_logger(__name__)
+logger.setLevel(level="DEBUG")
 
 
 class KeywordRelevanceOptions(BaseModel):
@@ -154,7 +155,7 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
         # Constrain block_ids to this segment's blocks (see builder docstring).
         schema = build_title_reference_schema(block_ids)
         try:
-            return self._call_llm(payload, schema), None
+            return self._call_llm(segment, payload, schema), None
         except ValidationError as exc:
             logger.exception("Unusable title/summary for segment %s", segment.segment_id)
             return None, _segment_error(EnrichmentErrorType.INVALID_OUTPUT, exc, segment)
@@ -162,7 +163,9 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
             logger.exception("Title/summary call failed for segment %s", segment.segment_id)
             return None, _segment_error(EnrichmentErrorType.LLM_CALL_FAILED, exc, segment)
 
-    def _call_llm(self, payload: str, schema: type[BaseModel]) -> TitleReference:
+    def _call_llm(
+        self, segment: DocumentSegment, payload: str, schema: type[BaseModel]
+    ) -> TitleReference:
         """One schema-constrained provider call returning a title + references."""
         start_time = time.perf_counter()
         response = self.provider.generate(
@@ -172,7 +175,9 @@ class KeywordRelevanceEnrichmentStrategy(EnrichmentStrategy):
             temperature=self.options.temperature,
         )
         logger.debug(
-            "LLM title/summary call: wall=%.2fs | %s",
+            "LLM title/summary call (segment pages %d-%d): wall=%.2fs | %s",
+            segment.start_page,
+            segment.end_page,
             time.perf_counter() - start_time,
             response.timing_summary(),
         )
