@@ -47,19 +47,16 @@ def test_non_pdf_rejected(client):
     assert resp.status_code == 422
 
 
-def test_case_detail_lists_segments_without_pages(client):
+def test_case_detail_lists_documents_with_segment_count(client):
     case_id = _make_case(client)
     _upload(client, case_id, ["akte.pdf"])
 
     document = client.get(f"/cases/{case_id}").json()["documents"][0]
     assert document["processing_status"] == "done"
-    segments = document["segments"]
-    assert len(segments) == 2
-    assert {s["relevance"] for s in segments} == {True, False}
-    assert "pages" not in segments[0]  # summary stays slim
-    relevant = next(s for s in segments if s["relevance"])
-    assert relevant["title"] == "Verfügung des Gerichts"
-    assert relevant["matched_keywords"] == ["Verfügung"]
+    # Segments are fetched separately now (GET /documents/{id}/segments) -- the
+    # case detail only carries the count for the document dropdown.
+    assert document["segment_count"] == 2
+    assert "segments" not in document
 
 
 def test_full_document_reconstructs_pages_and_segments(client):

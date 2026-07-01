@@ -23,7 +23,8 @@ def list_cases(service: CaseServiceDep) -> list[CaseSummary]:
 
 @router.get("/{case_id}", response_model=CaseDetail)
 def get_case(case_id: uuid.UUID, service: CaseServiceDep) -> CaseDetail:
-    return CaseDetail.from_case(service.get_case(case_id))
+    case, segment_counts = service.get_case(case_id)
+    return CaseDetail.from_case(case, segment_counts)
 
 
 @router.patch("/{case_id}", response_model=CaseSummary)

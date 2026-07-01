@@ -27,12 +27,12 @@ class CaseService:
     def list_cases(self) -> list[Case]:
         return self.cases.list_with_documents()
 
-    def get_case(self, case_id: uuid.UUID) -> Case:
-        """The case with its documents + segments (for the detail view)."""
-        case = self.cases.get_with_segments(case_id)
-        if case is None:
+    def get_case(self, case_id: uuid.UUID) -> tuple[Case, dict[uuid.UUID, int]]:
+        """The case with its documents + per-document segment counts (detail view)."""
+        result = self.cases.get_with_segment_counts(case_id)
+        if result is None:
             raise CaseNotFoundError(case_id)
-        return case
+        return result
 
     def rename_case(self, case_id: uuid.UUID, name: str) -> Case:
         case = self._require(case_id)

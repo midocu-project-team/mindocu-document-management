@@ -55,22 +55,26 @@ class SegmentSummary(BaseModel):
 
 
 class DocumentSummary(BaseModel):
-    """A document with its segment summaries -- no pages/blocks."""
+    """A document with its segment count -- segments are fetched separately.
+
+    The full segment list lives behind ``GET /documents/{id}/segments`` so the
+    case detail stays slim; only the count is kept here (for the doc dropdown).
+    """
 
     document_id: uuid.UUID
     file_name: str
     processing_status: ProcessingStatus
     total_pages: int
-    segments: list[SegmentSummary]
+    segment_count: int
 
     @classmethod
-    def from_row(cls, row: DocumentRow) -> "DocumentSummary":
+    def from_row(cls, row: DocumentRow, segment_count: int) -> "DocumentSummary":
         return cls(
             document_id=row.document_id,
             file_name=row.file_name,
             processing_status=row.processing_status,
             total_pages=row.total_pages,
-            segments=[SegmentSummary.from_segment(s) for s in row.segments],
+            segment_count=segment_count,
         )
 
 
@@ -95,7 +99,7 @@ class CaseSummary(BaseModel):
 
 
 class CaseDetail(BaseModel):
-    """Case detail: every document with its segment summaries."""
+    """Case detail: the document list with per-document segment counts."""
 
     id: uuid.UUID
     name: str
@@ -104,11 +108,14 @@ class CaseDetail(BaseModel):
     documents: list[DocumentSummary]
 
     @classmethod
-    def from_case(cls, case: Case) -> "CaseDetail":
+    def from_case(cls, case: Case, segment_counts: dict[uuid.UUID, int]) -> "CaseDetail":
         return cls(
             id=case.id,
             name=case.name,
             created_at=case.created_at,
             status=case_status_label(case.documents),
-            documents=[DocumentSummary.from_row(d) for d in case.documents],
+            documents=[
+                DocumentSummary.from_row(d, segment_counts.get(d.document_id, 0))
+                for d in case.documents
+            ],
         )
