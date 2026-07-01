@@ -78,9 +78,9 @@ export function DocumentWorkspacePage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [showRelevantSegments, setShowRelevantSegments] = useState(true);
   const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false);
-  // Source blocks ("hits") of the reference the user clicked, and which one is
-  // active. `null` => the reference bar is closed.
-  const [activeReferenceBlockIds, setActiveReferenceBlockIds] = useState<number[] | null>(null);
+  // Which reference (index into the segment's references) the user clicked, and
+  // which of its hits is active. `null` => the reference bar is closed.
+  const [activeReferenceIndex, setActiveReferenceIndex] = useState<number | null>(null);
   const [activeHitIndex, setActiveHitIndex] = useState(0);
   const pdfViewportRef = useRef<PdfViewportHandle>(null);
 
@@ -120,6 +120,10 @@ export function DocumentWorkspacePage() {
   // title/summary already come from the summary list above.
   const { data: segmentDetail } = useSegmentDetail(activeSegment?.id);
   const references = segmentDetail?.references ?? NO_REFERENCES;
+
+  // The clicked reference's block_ids (drives the hit bar); `null` => bar closed.
+  const activeReferenceBlockIds =
+    activeReferenceIndex != null ? (references[activeReferenceIndex]?.block_ids ?? null) : null;
 
   // Reference "hits": the source blocks of the clicked reference, loaded reactively
   // (one slot per block_id, `undefined` while loading). The active hit drives the
@@ -210,7 +214,7 @@ export function DocumentWorkspacePage() {
     setCurrentPage(1);
     setSelectedSegmentIndex(0);
     setSearchQuery('');
-    setActiveReferenceBlockIds(null);
+    setActiveReferenceIndex(null);
   };
 
   const handleSelectSegment = (index: number) => {
@@ -228,7 +232,7 @@ export function DocumentWorkspacePage() {
     setSelectedSegmentIndex(index);
     // Switching segment changes the right-sidebar references, so close any open
     // hit bar from the previous segment's reference.
-    setActiveReferenceBlockIds(null);
+    setActiveReferenceIndex(null);
 
     const segment = activeSegments[index];
     if (!segment) {
@@ -275,19 +279,17 @@ export function DocumentWorkspacePage() {
   ]);
 
   // Clicking a reference sentence opens the hit bar over the PDF: it loads the
-  // reference's source blocks and jumps to / highlights the first one.
-  const handleReferenceClick = (blockIds: number[]) => {
-    if (blockIds.length === 0) {
-      return;
-    }
-    setActiveReferenceBlockIds(blockIds);
+  // reference's source blocks and jumps to / highlights the first one. The
+  // clicked reference stays underlined (via activeReferenceIndex) until closed.
+  const handleReferenceClick = (index: number) => {
+    setActiveReferenceIndex(index);
     setActiveHitIndex(0);
   };
 
   const handlePrevHit = () => setActiveHitIndex((index) => Math.max(0, index - 1));
   const handleNextHit = () =>
     setActiveHitIndex((index) => Math.min(referenceHits.length - 1, index + 1));
-  const handleCloseReferenceBar = () => setActiveReferenceBlockIds(null);
+  const handleCloseReferenceBar = () => setActiveReferenceIndex(null);
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value));
 
@@ -458,6 +460,7 @@ export function DocumentWorkspacePage() {
               segmentTitle={activeSegment ? (activeSegment.title ?? SEGMENT_TITLE_FALLBACK) : ''}
               references={references}
               onReferenceClick={handleReferenceClick}
+              activeReferenceIndex={activeReferenceIndex}
             />
           </div>
         </div>

@@ -766,6 +766,15 @@ body.mindocu-resizing * {
   outline: none;
 }
 
+/* The clicked reference stays underlined while its hit bar is open, so it's
+   clear which reference is currently in view. */
+.mindocu-reference.is-active {
+  text-decoration: underline;
+  text-decoration-color: var(--mindocu-blue);
+  text-underline-offset: 2px;
+  color: var(--mindocu-text-strong);
+}
+
 .mindocu-empty-state {
   border-radius: 16px;
   background: rgba(245, 247, 250, 0.92);

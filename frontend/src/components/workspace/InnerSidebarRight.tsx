@@ -6,7 +6,9 @@ type InnerSidebarRightProps = {
   onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void;
   segmentTitle: string;
   references: SummaryReference[];
-  onReferenceClick: (blockIds: number[]) => void;
+  onReferenceClick: (index: number) => void;
+  // The reference whose hit bar is currently open; stays underlined until closed.
+  activeReferenceIndex: number | null;
 };
 
 const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab'] }> = [
@@ -21,6 +23,7 @@ export function InnerSidebarRight({
   segmentTitle,
   references,
   onReferenceClick,
+  activeReferenceIndex,
 }: InnerSidebarRightProps) {
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--right">
@@ -50,14 +53,15 @@ export function InnerSidebarRight({
                 {references.map((reference, index) => (
                   <span
                     key={index}
-                    className="mindocu-reference"
+                    className={`mindocu-reference${index === activeReferenceIndex ? ' is-active' : ''}`}
                     role="button"
                     tabIndex={0}
-                    onClick={() => onReferenceClick(reference.block_ids)}
+                    aria-pressed={index === activeReferenceIndex}
+                    onClick={() => onReferenceClick(index)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        onReferenceClick(reference.block_ids);
+                        onReferenceClick(index);
                       }
                     }}
                   >
