@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from api.db.models import Case, DocumentRow, ProcessingStatus
+from api.db.models import Case, DocumentRow, ProcessingStatus, Segment
 
 # Statuses that mean a document is still being processed.
 _IN_FLIGHT = {
@@ -33,7 +33,7 @@ class CaseRename(BaseModel):
 class SegmentSummary(BaseModel):
     """One enriched segment without pages/blocks (drives the segment list/filter)."""
 
-    segment_id: str
+    segment_id: uuid.UUID
     title: str | None
     summary: str | None
     relevance: bool
@@ -42,22 +42,22 @@ class SegmentSummary(BaseModel):
     end_page: int
 
     @classmethod
-    def from_content(cls, segment: dict) -> "SegmentSummary":
+    def from_segment(cls, segment: Segment) -> "SegmentSummary":
         return cls(
-            segment_id=segment["segment_id"],
-            title=segment.get("title"),
-            summary=segment.get("summary"),
-            relevance=segment["relevance"],
-            matched_keywords=segment.get("matched_keywords", []),
-            start_page=segment["start_page"],
-            end_page=segment["end_page"],
+            segment_id=segment.segment_id,
+            title=segment.title,
+            summary=segment.summary,
+            relevance=segment.relevance,
+            matched_keywords=list(segment.matched_keywords),
+            start_page=segment.start_page,
+            end_page=segment.end_page,
         )
 
 
 class DocumentSummary(BaseModel):
     """A document with its segment summaries -- no pages/blocks."""
 
-    document_id: str
+    document_id: uuid.UUID
     file_name: str
     processing_status: ProcessingStatus
     total_pages: int
@@ -65,13 +65,12 @@ class DocumentSummary(BaseModel):
 
     @classmethod
     def from_row(cls, row: DocumentRow) -> "DocumentSummary":
-        content = row.content or {}
         return cls(
             document_id=row.document_id,
             file_name=row.file_name,
             processing_status=row.processing_status,
             total_pages=row.total_pages,
-            segments=[SegmentSummary.from_content(s) for s in content.get("segments", [])],
+            segments=[SegmentSummary.from_segment(s) for s in row.segments],
         )
 
 

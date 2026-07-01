@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from api.db.base import SessionLocal
 from api.exceptions import APIError
 from api.factory import build_runner
-from api.routers import cases, documents
+from api.routers import cases, documents, segments
 from api.services import JobQueue, PipelineJobQueue
 from api.settings import Settings, get_settings
 
@@ -62,6 +62,7 @@ def create_app(settings: Settings | None = None, job_queue: JobQueue | None = No
     app.add_exception_handler(APIError, _api_error_handler) # type: ignore[arg-type] 
     app.include_router(cases.router)
     app.include_router(documents.router)
+    app.include_router(segments.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

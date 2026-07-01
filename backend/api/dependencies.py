@@ -10,7 +10,13 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from api.db.base import get_session
-from api.services import CaseService, DocumentService, JobQueue
+from api.services import (
+    BlockService,
+    CaseService,
+    DocumentService,
+    JobQueue,
+    SegmentService,
+)
 from api.settings import Settings
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -42,5 +48,15 @@ def get_document_service(
     return DocumentService(session, job_queue, settings)
 
 
+def get_segment_service(session: SessionDep) -> SegmentService:
+    return SegmentService(session)
+
+
+def get_block_service(session: SessionDep) -> BlockService:
+    return BlockService(session)
+
+
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
 DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
+SegmentServiceDep = Annotated[SegmentService, Depends(get_segment_service)]
+BlockServiceDep = Annotated[BlockService, Depends(get_block_service)]

@@ -29,6 +29,20 @@ class DocumentNotFoundError(APIError):
         super().__init__(f"document {document_id} not found")
 
 
+class SegmentNotFoundError(APIError):
+    status_code = 404
+
+    def __init__(self, segment_id: object) -> None:
+        super().__init__(f"segment {segment_id} not found")
+
+
+class BlockNotFoundError(APIError):
+    status_code = 404
+
+    def __init__(self, document_id: object, block_id: object) -> None:
+        super().__init__(f"block {block_id} of document {document_id} not found")
+
+
 class TooManyDocumentsError(APIError):
     status_code = 409
 

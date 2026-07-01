@@ -11,7 +11,7 @@ from api.schemas.cases import case_status_label
 class DocumentStatus(BaseModel):
     """Per-document processing status (current stage = processing_status)."""
 
-    document_id: str
+    document_id: uuid.UUID
     file_name: str
     processing_status: ProcessingStatus
     error_message: str | None
