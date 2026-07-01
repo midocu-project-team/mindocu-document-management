@@ -1,8 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { usePdfPageVirtualizer, PDF_DEFAULT_ASPECT } from '@/hooks/usePdfPageVirtualizer';
 import { getNextVisiblePage, getPreviousVisiblePage } from '@/utils/segmentUtils';
+import { BlockHighlightLayer } from '@/components/workspace/BlockHighlightLayer';
+import type { BoundingBox } from '@/api/types';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -13,6 +15,8 @@ export type PdfViewportHandle = {
   goToPage: (page: number, behavior?: ScrollBehavior) => void;
 };
 
+type PageDimensions = { widthPt: number; heightPt: number };
+
 type PdfViewportProps = {
   pdfUrl?: string | null;
   currentPage: number;
@@ -22,6 +26,9 @@ type PdfViewportProps = {
   onPageCountChange: (pageCount: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  // The block to highlight (its page + bbox in PDF points). The page is scrolled
+  // into view by the caller; this component only draws the overlay rectangle.
+  highlight?: { pageNumber: number; bbox: BoundingBox } | null;
 };
 
 const PDF_BASE_WIDTH = 720;
@@ -34,11 +41,26 @@ const PDF_PAGE_GAP = 18; // vertical gap between rendered pages (px)
 const PDF_OPTIONS = { wasmUrl: '/wasm/' };
 
 export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(function PdfViewport(
-  { pdfUrl, currentPage, visiblePages, zoom, onPageChange, onPageCountChange, onZoomIn, onZoomOut },
+  {
+    pdfUrl,
+    currentPage,
+    visiblePages,
+    zoom,
+    onPageChange,
+    onPageCountChange,
+    onZoomIn,
+    onZoomOut,
+    highlight,
+  },
   ref,
 ) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const onPageChangeRef = useRef(onPageChange);
+
+  // Intrinsic page size in PDF points per page (from pdf.js on load); needed to
+  // scale/flip a block bbox into the rendered canvas. Stays valid across zoom
+  // (originalWidth/Height are unscaled), so we capture each page only once.
+  const [pageDimensions, setPageDimensions] = useState<Record<number, PageDimensions>>({});
 
   const renderedPages = visiblePages;
   const displayPageCount = visiblePages.length;
@@ -113,6 +135,22 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
     onPageCountChange(numPages);
   };
 
+  const rememberPageDimensions = (
+    pageNumber: number,
+    dims: { originalWidth: number; originalHeight: number },
+  ) => {
+    setPageDimensions((previous) => {
+      const existing = previous[pageNumber];
+      if (existing && existing.widthPt === dims.originalWidth) {
+        return previous;
+      }
+      return {
+        ...previous,
+        [pageNumber]: { widthPt: dims.originalWidth, heightPt: dims.originalHeight },
+      };
+    });
+  };
+
   return (
     <section className="mindocu-pdf-stage" aria-label="Dokumentansicht">
       <div ref={viewportRef} className="mindocu-pdf-scrollarea" onScroll={handleViewportScroll}>
@@ -161,6 +199,7 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
                           width={pageWidth}
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
+                          onLoadSuccess={(page) => rememberPageDimensions(pageNumber, page)}
                           loading={
                             <div
                               style={{
@@ -170,6 +209,14 @@ export const PdfViewport = forwardRef<PdfViewportHandle, PdfViewportProps>(funct
                             />
                           }
                         />
+                        {highlight?.pageNumber === pageNumber && pageDimensions[pageNumber] ? (
+                          <BlockHighlightLayer
+                            bbox={highlight.bbox}
+                            widthPt={pageDimensions[pageNumber].widthPt}
+                            heightPt={pageDimensions[pageNumber].heightPt}
+                            renderedWidthPx={pageWidth}
+                          />
+                        ) : null}
                       </div>
                     </div>
                   );

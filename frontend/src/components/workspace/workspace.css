@@ -1003,7 +1003,24 @@ body.mindocu-resizing * {
 }
 
 .mindocu-pdf-pagewrap {
+  position: relative; /* anchor for the absolutely-positioned block highlight overlay */
   box-shadow: var(--mindocu-shadow);
+}
+
+/* A single reference-block highlight drawn over the page canvas. Position/size
+   are set inline (computed from the bbox + page size); this is only the look. */
+.mindocu-block-highlight {
+  position: absolute;
+  border: 2px solid var(--mindocu-blue);
+  border-radius: 3px;
+  background: rgba(51, 72, 201, 0.16);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  transition:
+    left 0.18s ease,
+    top 0.18s ease,
+    width 0.18s ease,
+    height 0.18s ease;
 }
 
 .mindocu-pdf-loading {
