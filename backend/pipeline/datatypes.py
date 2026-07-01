@@ -58,10 +58,9 @@ class PageExtractionError(BaseModel):
 
 
 class CaseFileDocument(BaseModel):
-    # kw_only ensures that the default value for document_id is allowed even when required fields follow.
-    document_id: str = Field(
-        default_factory=lambda: str(uuid.uuid4())
-    )  # UUID, generated when loading
+    document_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4
+    )  # generated when loading; serialized as a string in JSON
     file_name: str
     file_size_bytes: int
     total_pages: int
@@ -82,7 +81,7 @@ class CaseFileDocument(BaseModel):
 
 
 class DocumentSegment(BaseModel):
-    segment_id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # UUID
+    segment_id: uuid.UUID = Field(default_factory=uuid.uuid4)  # serialized as a string in JSON
 
     start_page: int  # 1-indexed, inclusive
     end_page: int  # 1-indexed, inclusive
@@ -112,7 +111,7 @@ class SegmentationError(BaseModel):
 
 
 class SegmentationResult(BaseModel):
-    document_id: str  # Same ID as in CaseFileDocument
+    document_id: uuid.UUID  # Same ID as in CaseFileDocument
     segments: list[DocumentSegment]
     segmented_at: datetime = Field(default_factory=datetime.now)
     segmentation_method: str  # e.g., "llm", "rule-based", "hybrid"
@@ -142,7 +141,7 @@ class EnrichmentError(BaseModel):
     error_type: EnrichmentErrorType
     message: str
     # Optional scope: None => the whole document, otherwise the affected segment.
-    segment_id: str | None = None
+    segment_id: uuid.UUID | None = None
 
 
 class EnrichedSegment(DocumentSegment):
@@ -183,7 +182,7 @@ class EnrichedSegment(DocumentSegment):
 
 
 class EnrichmentResult(BaseModel):
-    document_id: str  # Same ID as in CaseFileDocument
+    document_id: uuid.UUID  # Same ID as in CaseFileDocument
     segments: list[EnrichedSegment]  # All segments from stage 2, enriched with metadata
     enriched_at: datetime = Field(default_factory=datetime.now)
     enrichment_method: str  # e.g., "llm+keyword"

@@ -7,7 +7,7 @@ the per-stage subpackages stay an implementation detail. The data contract
 lives in ``pipeline.datatypes``.
 """
 
-from .document import CURRENT_SCHEMA_VERSION, Document
+from .document import Document
 from .enrichment import (
     KeywordRelevanceEnrichmentStrategy,
     KeywordRelevanceOptions,
@@ -49,5 +49,4 @@ __all__ = [
     # Composition (runs all three stages into one Document)
     "PipelineRunner",
     "Document",
-    "CURRENT_SCHEMA_VERSION",
 ]

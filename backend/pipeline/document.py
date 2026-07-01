@@ -7,10 +7,11 @@ segments and the per-stage error lists. It is pure composition -- no app, DB
 or HTTP knowledge -- so it lives in ``pipeline`` next to the stages it
 aggregates and is the value ``PipelineRunner.run`` returns.
 
-``schema_version`` is carried for the persistence layer: stored ``Document``
-JSON is versioned so a future field change can be upcast on read.
+Schema evolution of the persisted document is handled by the relational schema
+and Alembic migrations, not by an in-model version field.
 """
 
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -26,14 +27,10 @@ from pipeline.datatypes import (
     SegmentationResult,
 )
 
-# Bump when the persisted Document shape changes; the repository upcasts on read.
-CURRENT_SCHEMA_VERSION = 1
-
-
 class Document(BaseModel):
     """A fully processed case-file document: metadata, pages and enriched segments."""
 
-    document_id: str
+    document_id: uuid.UUID
     file_name: str
     file_size_bytes: int
     total_pages: int
@@ -52,7 +49,6 @@ class Document(BaseModel):
 
     extracted_at: datetime
     enriched_at: datetime
-    schema_version: int = CURRENT_SCHEMA_VERSION
 
     @classmethod
     def from_pipeline(
