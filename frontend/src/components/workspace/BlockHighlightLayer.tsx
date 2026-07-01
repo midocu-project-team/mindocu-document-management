@@ -11,6 +11,9 @@ type BlockHighlightLayerProps = {
   renderedWidthPx: number;
 };
 
+// Small buffer in px
+const BUFFER = 4
+
 /**
  * A single highlight rectangle drawn over a rendered PDF page. Converts the
  * bottom-left-origin PDF-point bbox into top-left CSS pixels; must be rendered
@@ -30,10 +33,10 @@ export function BlockHighlightLayer({
   const [x0, y0, x1, y1] = bbox;
   const scale = renderedWidthPx / widthPt;
   const style: CSSProperties = {
-    left: x0 * scale,
-    top: (heightPt - y1) * scale, // y-flip: y1 is the box's top edge (origin bottom-left)
-    width: (x1 - x0) * scale,
-    height: (y1 - y0) * scale,
+    left: x0 * scale - BUFFER,
+    top: (heightPt - y1) * scale - BUFFER, // y-flip: y1 is the box's top edge (origin bottom-left)
+    width: (x1 - x0) * scale + BUFFER,
+    height: (y1 - y0) * scale + BUFFER,
   };
 
   return <div className="mindocu-block-highlight" style={style} aria-hidden="true" />;

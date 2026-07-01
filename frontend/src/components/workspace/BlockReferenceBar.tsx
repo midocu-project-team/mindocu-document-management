@@ -41,15 +41,6 @@ export function BlockReferenceBar({
 
   return (
     <div className="mindocu-reference-bar" role="toolbar" aria-label="Referenz-Treffer">
-      <button
-        type="button"
-        className="mindocu-reference-bar-nav"
-        onClick={onPrev}
-        disabled={activeIndex <= 0}
-        aria-label="Vorheriger Treffer"
-      >
-        <ChevronLeft size={18} />
-      </button>
 
       <span className="mindocu-reference-bar-counter">
         Treffer {activeIndex + 1}/{hits.length}
@@ -60,6 +51,15 @@ export function BlockReferenceBar({
         <span className="mindocu-reference-bar-preview">{previewText(active)}</span>
       </div>
 
+      <button
+        type="button"
+        className="mindocu-reference-bar-nav"
+        onClick={onPrev}
+        disabled={activeIndex <= 0}
+        aria-label="Vorheriger Treffer"
+      >
+        <ChevronLeft size={18} />
+      </button>
       <button
         type="button"
         className="mindocu-reference-bar-nav"
