@@ -88,7 +88,7 @@ def _build_demo_document(*, file_size_bytes: int) -> Document:
     )
     now = datetime.now()
     return Document(
-        document_id=str(uuid.uuid4()),
+        document_id=uuid.uuid4(),
         file_name="Demo-Akte.pdf",
         file_size_bytes=file_size_bytes,
         total_pages=len(pages),
