@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { AppSidebar } from '@/components/common/AppSidebar';
 import { Topbar } from '@/components/workspace/Topbar';
@@ -10,19 +11,28 @@ import {
   findSegmentIndexForPage,
   getNearestVisiblePage,
   getVisiblePages,
+  isSegmentShown,
   visibleSegmentDistance,
 } from '@/utils/segmentUtils';
 import {
-  SEGMENT_SUMMARY_FALLBACK,
   SEGMENT_TITLE_FALLBACK,
+  toSegment,
   toWorkspaceDocument,
 } from '@/utils/workspaceMappers';
 import type { Segment } from '@/types/segment';
+import type { SummaryReference } from '@/api/types';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useCaseDetail } from '@/api/hooks';
+import {
+  fetchBlock,
+  prefetchSegmentDetail,
+  useCaseDetail,
+  useDocumentSegments,
+  useSegmentDetail,
+} from '@/api/hooks';
 
 const NO_SEGMENTS: Segment[] = [];
+const NO_REFERENCES: SummaryReference[] = [];
 
 const LEFT_SIDEBAR = { initial: 284, min: 220, max: 560, storageKey: 'mindocu:left-sidebar-width' };
 const RIGHT_SIDEBAR = {
@@ -45,6 +55,7 @@ const SMOOTH_SCROLL_SEGMENT_DISTANCE = 2;
 export function DocumentWorkspacePage() {
   const { caseId } = useParams<{ caseId: string }>();
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId);
+  const queryClient = useQueryClient();
 
   const isCompact = useMediaQuery(COMPACT_QUERY);
 
@@ -89,9 +100,19 @@ export function DocumentWorkspacePage() {
     workspaceDocuments.find((document) => document.id === selectedDocumentId) ??
     workspaceDocuments[0];
 
-  const activeSegments = activeDocument?.segments ?? NO_SEGMENTS;
+  // Segments are fetched per document now (not embedded in the case detail).
+  const { data: segmentSummaries } = useDocumentSegments(activeDocument?.id);
+  const activeSegments = useMemo(
+    () => (segmentSummaries ? segmentSummaries.map(toSegment) : NO_SEGMENTS),
+    [segmentSummaries],
+  );
 
   const activeSegment = activeSegments[selectedSegmentIndex] ?? activeSegments[0];
+
+  // The active segment's detail (references/block_ids) is loaded on selection;
+  // title/summary already come from the summary list above.
+  const { data: segmentDetail } = useSegmentDetail(activeSegment?.id);
+  const references = segmentDetail?.references ?? NO_REFERENCES;
 
   // The PDF's reported count wins once loaded; until then fall back to the
   // document metadata so the visible-page list isn't briefly clamped.
@@ -163,6 +184,54 @@ export function DocumentWorkspacePage() {
 
     const behavior: ScrollBehavior = distance <= SMOOTH_SCROLL_SEGMENT_DISTANCE ? 'smooth' : 'auto';
     pdfViewportRef.current?.goToPage(segment.start_page, behavior);
+  };
+
+  // Prefetch the detail of the ±2 visible neighbors so switching to an adjacent
+  // segment card is instant (cache hit). Visibility uses the same filter as the
+  // left sidebar, so hidden segments never count as neighbors.
+  useEffect(() => {
+    const visibleIndices = activeSegments
+      .map((_, index) => index)
+      .filter((index) =>
+        isSegmentShown(
+          activeSegments[index],
+          showRelevantSegments,
+          showIrrelevantSegments,
+          searchQuery,
+        ),
+      );
+    const position = visibleIndices.indexOf(selectedSegmentIndex);
+    if (position < 0) {
+      return;
+    }
+    [position - 2, position - 1, position + 1, position + 2]
+      .filter((neighbor) => neighbor >= 0 && neighbor < visibleIndices.length)
+      .map((neighbor) => activeSegments[visibleIndices[neighbor]])
+      .forEach((segment) => {
+        if (segment) {
+          prefetchSegmentDetail(queryClient, segment.id);
+        }
+      });
+  }, [
+    activeSegments,
+    selectedSegmentIndex,
+    showRelevantSegments,
+    showIrrelevantSegments,
+    searchQuery,
+    queryClient,
+  ]);
+
+  // Clicking a reference sentence fetches its source block(s). For now the block
+  // content is only logged; a highlight/scroll UI will replace this later.
+  const handleReferenceClick = (blockIds: number[]) => {
+    if (!activeDocument) {
+      return;
+    }
+    blockIds.forEach((blockId) => {
+      fetchBlock(queryClient, activeDocument.id, blockId)
+        .then((block) => console.log('Referenz-Block', blockId, block))
+        .catch((error) => console.error('Block konnte nicht geladen werden', blockId, error));
+    });
   };
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value));
@@ -319,7 +388,8 @@ export function DocumentWorkspacePage() {
               activeTab={rightTab}
               onTabChange={setRightTab}
               segmentTitle={activeSegment ? (activeSegment.title ?? SEGMENT_TITLE_FALLBACK) : ''}
-              summary={activeSegment ? (activeSegment.summary ?? SEGMENT_SUMMARY_FALLBACK) : ''}
+              references={references}
+              onReferenceClick={handleReferenceClick}
             />
           </div>
         </div>

@@ -23,13 +23,15 @@ export function toSegment(summary: SegmentSummary): Segment {
   };
 }
 
-/** Map an API document summary to a workspace document (PDF served by the API). */
+/** Map an API document summary to a workspace document (PDF served by the API).
+ *  Segments are no longer embedded -- they are fetched per document and mapped
+ *  via `toSegment`; only the count is carried here (for the document dropdown). */
 export function toWorkspaceDocument(document: DocumentSummary): WorkspaceDocument {
   return {
     id: document.document_id,
     label: document.file_name,
     pdfUrl: pdfUrl(document.document_id),
     totalPages: document.total_pages,
-    segments: document.segments.map(toSegment),
+    segmentCount: document.segment_count,
   };
 }

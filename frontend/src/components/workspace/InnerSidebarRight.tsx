@@ -1,8 +1,12 @@
+import type { SummaryReference } from '@/api/types';
+import { SEGMENT_SUMMARY_FALLBACK } from '@/utils/workspaceMappers';
+
 type InnerSidebarRightProps = {
   activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions';
   onTabChange: (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => void;
   segmentTitle: string;
-  summary: string;
+  references: SummaryReference[];
+  onReferenceClick: (blockIds: number[]) => void;
 };
 
 const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab'] }> = [
@@ -15,7 +19,8 @@ export function InnerSidebarRight({
   activeTab,
   onTabChange,
   segmentTitle,
-  summary,
+  references,
+  onReferenceClick,
 }: InnerSidebarRightProps) {
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--right">
@@ -40,7 +45,27 @@ export function InnerSidebarRight({
         {activeTab === 'Zusammenfassung' ? (
           <>
             <div className="mindocu-summary-title">{segmentTitle}</div>
-            <p className="mindocu-summary-text">{summary}</p>
+            {references.length > 0 ? (
+              <div className="mindocu-summary-references">
+                {references.map((reference, index) => (
+                  <span
+                    key={index}
+                    className="mindocu-reference"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onReferenceClick(reference.block_ids)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onReferenceClick(reference.block_ids);
+                      }
+                    }}
+                  >
+                    {reference.text}
+                  </span>
+                ))}
+              </div>
+            ) : SEGMENT_SUMMARY_FALLBACK}
             <p className="mindocu-summary-note">
               KI generierte Zusammenfassung — nur zur Orientierung
             </p>

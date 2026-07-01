@@ -347,6 +347,8 @@ body.mindocu-resizing * {
 
 .mindocu-inner-panel--summary {
   gap: 14px;
+  /* Long summaries + many reference sentences scroll instead of overflowing. */
+  overflow-y: auto;
 }
 
 /* Left sidebar inner toolbar: vertical icon stack similar to main AppSidebar */
@@ -662,6 +664,26 @@ body.mindocu-resizing * {
   color: var(--mindocu-muted);
   font-size: 0.78rem;
   margin-top: 6px;
+}
+
+.mindocu-summary-references {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Each reference is a clickable sentence; underline on hover/focus signals it. */
+.mindocu-reference {
+  color: var(--mindocu-text);
+  font-size: 0.87rem;
+  line-height: 1.48;
+  cursor: pointer;
+}
+
+.mindocu-reference:hover,
+.mindocu-reference:focus-visible {
+  text-decoration: underline;
+  outline: none;
 }
 
 .mindocu-empty-state {

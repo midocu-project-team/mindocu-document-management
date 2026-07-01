@@ -121,7 +121,7 @@ export function WorkspaceToolbar({
                   >
                     <span className="mindocu-toolbar-dropdown-item-label">{document.label}</span>
                     <span className="mindocu-toolbar-dropdown-item-meta">
-                      {document.segments.length} Segmente
+                      {document.segmentCount} Segmente
                     </span>
                   </button>
                 );
