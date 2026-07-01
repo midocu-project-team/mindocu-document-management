@@ -79,7 +79,7 @@ def _load_model(model_id: str) -> tuple:
     import mlx_lm
     import outlines
 
-    model, tokenizer = mlx_lm.load(model_id)
+    model, tokenizer, *_ = mlx_lm.load(model_id)
     return outlines.from_mlxlm(model, tokenizer), tokenizer
 
 

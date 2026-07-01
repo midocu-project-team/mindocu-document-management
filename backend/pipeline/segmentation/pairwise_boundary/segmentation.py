@@ -28,9 +28,9 @@ class _SimilarityResult(BaseModel):
     # reasoning: str # take out to test model performance
 
 class _PairDecision(NamedTuple):
-    """Boundary decision for the adjacent pair (pages[index], pages[index+1])."""
+    """Boundary decision for the adjacent pair (pages[pair_index], pages[pair_index+1])."""
 
-    index: int
+    pair_index: int
     result: _SimilarityResult | None  # None => the LLM call raised
     error: str | None = None
 
@@ -74,8 +74,8 @@ class PairwiseBoundarySegmentationStrategy(SegmentationStrategy):
                 SegmentationError(
                     error_type=SegmentationErrorType.LLM_CALL_FAILED,
                     message=dec.error or "similarity decision failed",
-                    start_page=pages[dec.index].page_number,
-                    end_page=pages[dec.index + 1].page_number,
+                    start_page=pages[dec.pair_index].page_number,
+                    end_page=pages[dec.pair_index + 1].page_number,
                 )
                 for dec in decisions
                 if dec.result is None

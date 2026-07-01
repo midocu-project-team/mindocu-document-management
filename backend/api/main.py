@@ -59,7 +59,7 @@ def create_app(settings: Settings | None = None, job_queue: JobQueue | None = No
     app.state.settings = settings
     app.state.job_queue = job_queue or PipelineJobQueue(build_runner(settings), SessionLocal)
 
-    app.add_exception_handler(APIError, _api_error_handler)
+    app.add_exception_handler(APIError, _api_error_handler) # type: ignore[arg-type] 
     app.include_router(cases.router)
     app.include_router(documents.router)
 

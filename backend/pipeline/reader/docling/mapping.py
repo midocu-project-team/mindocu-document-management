@@ -114,7 +114,7 @@ def _text_item_to_blocks(item: TextItem) -> list[tuple[int, RawContentBlock]]:
     return blocks
 
 
-def _floating_items_to_blocks(item: DocItem, doc) -> list[tuple[int, RawContentBlock]]:
+def _floating_items_to_blocks(item: FloatingItem, doc) -> list[tuple[int, RawContentBlock]]:
     """
     Converts a non-textual DocItem into (page_no, ContentBlock) per prov.
 

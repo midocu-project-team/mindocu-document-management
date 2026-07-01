@@ -38,7 +38,9 @@ def _default_pipeline_options() -> ThreadedPdfPipelineOptions:
         document_timeout=60 * 60,  # reading may not take longer than 60 minutes
     )
 
-    pipeline_options.table_structure_options.mode = TableFormerMode.FAST
+    # table_structure_options is typed as the base class (no `mode`); the
+    # concrete runtime instance is TableStructureOptions, which has it.
+    pipeline_options.table_structure_options.mode = TableFormerMode.FAST  # pyright: ignore[reportAttributeAccessIssue]
 
     return pipeline_options
 

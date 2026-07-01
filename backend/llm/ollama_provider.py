@@ -46,7 +46,7 @@ class OllamaProvider(LLMProvider):
         response = ollama.generate(
             model=self.model,
             prompt=prompt,
-            system=system,
+            system=system or "",
             format=schema.model_json_schema() if schema else None,
             think=self.think,
             options=options,
@@ -68,7 +68,7 @@ def _to_response(response: ollama.GenerateResponse) -> LLMResponse:
         return (ns or 0) / 1e9
 
     return LLMResponse(
-        text=response.response,
+        text=response.response or "",
         prompt_tokens=response.prompt_eval_count or 0,
         completion_tokens=response.eval_count or 0,
         prompt_duration=secs(response.prompt_eval_duration),
