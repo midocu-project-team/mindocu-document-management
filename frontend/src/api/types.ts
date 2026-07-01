@@ -61,6 +61,12 @@ export interface SegmentDetail {
   references: SummaryReference[];
 }
 
+/**
+ * A bounding box in PDF points with a bottom-left origin: (x0, y0, x1, y1).
+ * A top-left-origin consumer flips y via the page height (see BlockHighlightLayer).
+ */
+export type BoundingBox = [number, number, number, number];
+
 /** One content block (GET /documents/{id}/blocks/{block_id}). */
 export interface BlockOut {
   document_id: string;
@@ -68,7 +74,7 @@ export interface BlockOut {
   page_number: number;
   text: string;
   block_type: string;
-  bbox: [number, number, number, number] | null;
+  bbox: BoundingBox | null;
   source_ref: string | null;
 }
 

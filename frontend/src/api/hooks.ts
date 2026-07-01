@@ -3,7 +3,13 @@
  * local CasesContext. Polling lists/status use a 10s refetch interval.
  */
 
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 
 import { del, getJson, patchJson, postForm, postJson } from './client';
 import type {
@@ -177,3 +183,26 @@ export function fetchBlock(queryClient: QueryClient, documentId: string, blockId
     staleTime: DETAIL_STALE_MS,
   });
 }
+
+/**
+ * Reactively load several blocks of a document by id -- one query per block over
+ * the same key/fetcher as `fetchBlock` (shared cache, no drift). Returns one slot
+ * per requested id, aligned to `blockIds`: `undefined` while a block is still
+ * loading or failed, so callers keep a stable index (e.g. "hit 2/5").
+ */
+export function useBlocks(documentId: string | undefined, blockIds: number[]) {
+  return useQueries({
+    queries: blockIds.map((blockId) => ({
+      queryKey: documentKeys.block(documentId ?? '', blockId),
+      queryFn: () => fetchBlockById(documentId as string, blockId),
+      enabled: Boolean(documentId),
+      staleTime: DETAIL_STALE_MS,
+    })),
+    combine: combineBlockData,
+  });
+}
+
+// Module-level (not inline) so useQueries can memoize the combined result: it
+// only re-runs when the underlying query results actually change.
+const combineBlockData = (results: { data?: BlockOut }[]) =>
+  results.map((result) => result.data);
