@@ -271,6 +271,26 @@ def test_failed_call_degrades_segment_and_records_error():
     assert result.errors[0].segment_id == segment.segment_id
 
 
+def test_duplicate_block_ids_within_a_reference_are_deduplicated():
+    # Constrained decoding restricts block_ids to valid ids but cannot enforce
+    # uniqueness, so the model may repeat an id ([4421, 4421]) -- that used to
+    # crash the DB insert (PK reference_blocks). block_ids is semantically a
+    # set; the datatype normalizes to ascending order (= DB round-trip order).
+    references = [
+        {"text": "Erster Satz.", "block_ids": [0, 0, 1]},
+        {"text": "Zweiter Satz.", "block_ids": [1, 0, 1]},
+    ]
+    provider = FakeProvider(
+        text=json.dumps({"title": CANNED_TITLE, "references": references})
+    )
+    strategy = KeywordRelevanceEnrichmentStrategy(provider, RelevanceKeywords())
+    segment = make_segment([make_page(1, [make_block("Anschreiben")])])
+
+    enriched = strategy.enrich_segments(make_result([segment])).segments[0]
+
+    assert [r.block_ids for r in enriched.references or []] == [[0, 1], [0, 1]]
+
+
 def test_unparseable_output_yields_invalid_output_error():
     strategy = KeywordRelevanceEnrichmentStrategy(
         FakeProvider(text="not json"), RelevanceKeywords()

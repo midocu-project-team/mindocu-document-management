@@ -86,13 +86,29 @@ def test_segment_references_and_bbox_roundtrip(session_factory):
     assert loaded.document_id == document.document_id
     segment = loaded.segments[0]
     # References come back in seq order with their grounded block_ids intact.
-    assert [r.text for r in segment.references] == ["A.", "B.", "C."]
-    assert [r.block_ids for r in segment.references] == [[10, 12], [11], [10]]
+    assert [r.text for r in segment.references or []] == ["A.", "B.", "C."]
+    assert [r.block_ids for r in segment.references or []] == [[10, 12], [11], [10]]
     # Summary is the denormalized join of the reference texts.
     assert segment.summary == "A. B. C."
 
     blocks = loaded.pages[0].blocks
     assert [b.bbox for b in blocks] == [(1, 2, 3, 4), None, (5, 6, 7, 8)]
+
+
+def test_duplicate_block_ids_in_a_reference_do_not_break_the_save(session_factory):
+    """Regression: an LLM may cite the same block twice within one reference;
+    that used to violate the (reference_id, block_id) PK. The datatype now
+    normalizes block_ids to a sorted set, so the save must succeed."""
+    document = _build_document()
+    document.segments[0].references = [
+        SummaryReference(text="A.", block_ids=[12, 10, 10, 12]),
+    ]
+    _persist(session_factory, document)
+
+    with session_factory() as session:
+        loaded = DocumentRepository(session).load_document(document.document_id)
+
+    assert [r.block_ids for r in loaded.segments[0].references or []] == [[10, 12]]
 
 
 def test_irrelevant_segment_has_no_references(session_factory):
