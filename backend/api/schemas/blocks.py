@@ -21,17 +21,17 @@ class BlockOut(BaseModel):
 
     @classmethod
     def from_block(cls, block: Block) -> "BlockOut":
-        bbox = (
-            None
-            if block.bbox_x0 is None
-            else (block.bbox_x0, block.bbox_y0, block.bbox_x1, block.bbox_y1)
-        )
+        x0, y0, x1, y1 =  block.bbox_x0, block.bbox_y0, block.bbox_x1, block.bbox_y1
+        any_coord_none = x0 is None or y0 is None or x1 is None or y1 is None 
+
+        bbox = (x0,y0,x1,y1) if not any_coord_none else None
+
         return cls(
             document_id=block.document_id,
             block_id=block.block_id,
             page_number=block.page_number,
             text=block.text,
             block_type=block.block_type,
-            bbox=bbox,
+            bbox=bbox, 
             source_ref=block.source_ref,
         )

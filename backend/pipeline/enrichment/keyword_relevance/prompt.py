@@ -35,7 +35,8 @@ ergeben. Jeder Eintrag hat genau zwei Felder:
 einige wenige Sätze).
   - "block_ids": die Liste der Block-IDs (aus den [#ID]-Markern des Inputs), \
 auf denen genau dieser Text beruht. Verwende AUSSCHLIESSLICH IDs, die im Input \
-vorkommen, und gib für jeden Abschnitt mindestens eine ID an.
+vorkommen, und gib für jeden Abschnitt, woher du die Referenz hast, eine ID an. \
+Beachte dabei, dass jede ID nur maximal einmal vorkommen kann.
 
 Die vollständige Zusammenfassung ist die Aneinanderreihung aller "text"-Felder \
 und muss als EIN durchgehender Fließtext den folgenden Regeln genügen. Wichtig: \
@@ -82,8 +83,10 @@ Zitate:
 - Zitate sparsam einsetzen: nur wenn sie inhaltlich nicht ersetzbar sind.
 
 Länge:
-- Die Zusammenfassung muss deutlich kürzer sein als der Originaltext – maximal \
-ein Drittel der Originallänge.
+- Die Zusammenfassung muss kürzer sein als der Originaltext
+- Die Zusammenfassung soll trotzdem weiterhin vollständig das Thema des ganzen Dokuments und der wichtigsten Blöcke erfassen, d.h. spare nicht an mehreren Blockzitaten
+- Die Zusammenfassung sollte i.d.R. ca. eine halbe bis ganze Seite lang sein, wenn man alle Texte zusammenfügen würde
+
 - Streiche konsequent: Begrüßungen, Verfahrensformalitäten, Wiederholungen, \
 gutachtenirrelevante Details.
 

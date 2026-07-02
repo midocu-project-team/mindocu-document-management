@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 import enum
 import uuid
 from datetime import datetime
@@ -127,7 +127,16 @@ class SegmentationResult(BaseModel):
 
 class SummaryReference(BaseModel):
     text: str
+    # Semantically a set (which blocks ground this sentence); normalized to
+    # ascending order. Constrained decoding cannot enforce uniqueness, and the
+    # DB PK (reference_id, block_id) rejects duplicates -- also the read-back
+    # order is ascending block_id, so this keeps both representations equal.
     block_ids: list[int]
+
+    @field_validator("block_ids")
+    @classmethod
+    def _dedupe_sorted(cls, ids: list[int]) -> list[int]:
+        return sorted(set(ids))
 
 
 class EnrichmentErrorType(enum.StrEnum):

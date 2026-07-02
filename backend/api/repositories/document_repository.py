@@ -271,11 +271,13 @@ def _block_to_dict(block: Block) -> dict:
         "source_ref": block.source_ref,
     }
 
-
 def _bbox_to_tuple(block: Block) -> tuple[float, float, float, float] | None:
-    if block.bbox_x0 is None:
+     x0, y0, x1, y1 = block.bbox_x0, block.bbox_y0, block.bbox_x1, block.bbox_y1
+
+     if x0 is None or y0 is None or x1 is None or y1 is None:
         return None
-    return (block.bbox_x0, block.bbox_y0, block.bbox_x1, block.bbox_y1)
+
+     return (x0,y0,x1,y1)
 
 
 def _segment_to_dict(segment: Segment, pages_by_number: dict) -> dict:
