@@ -345,7 +345,7 @@ export function DocumentWorkspacePage() {
 
       <div className="mindocu-app-main">
         <Topbar
-          title="pdf-viewer"
+          title={caseDetail.name}
           leftSidebarOpen={leftSidebarOpen}
           rightSidebarOpen={rightSidebarOpen}
           onToggleLeftSidebar={() => setLeftSidebarOpen((value) => !value)}
