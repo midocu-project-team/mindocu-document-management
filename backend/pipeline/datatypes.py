@@ -18,6 +18,7 @@ class BlockType(enum.StrEnum):
     FORM = "form"  # form / key-value regions, fields, checkboxes
     HANDWRITTEN = "handwritten"
     FOOTER = "footer"
+    CODE = "code"
     UNKNOWN = "unknown"
 
 

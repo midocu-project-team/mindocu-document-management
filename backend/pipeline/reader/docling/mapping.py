@@ -58,7 +58,7 @@ _LABEL_TO_BLOCKTYPE: dict[DocItemLabel, BlockType] = {
     # Paragraph-like text (deliberately folded together)
     DocItemLabel.TEXT: BlockType.PARAGRAPH,
     DocItemLabel.PARAGRAPH: BlockType.PARAGRAPH,
-    DocItemLabel.CODE: BlockType.PARAGRAPH,
+    DocItemLabel.CODE: BlockType.CODE,
     DocItemLabel.CAPTION: BlockType.PARAGRAPH,
     DocItemLabel.FOOTNOTE: BlockType.PARAGRAPH,
     DocItemLabel.FORMULA: BlockType.PARAGRAPH,
