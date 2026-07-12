@@ -17,6 +17,9 @@ import type {
   CaseDetail,
   CaseStatus,
   CaseSummary,
+  ChatMessage,
+  ChatSessionDetail,
+  ChatSessionSummary,
   DocumentStatus,
   SegmentDetail,
   SegmentSummary,
@@ -42,6 +45,11 @@ export const documentKeys = {
 
 export const segmentKeys = {
   detail: (segmentId: string) => ['segments', segmentId, 'detail'] as const,
+};
+
+export const chatKeys = {
+  sessions: (documentId: string) => ['documents', documentId, 'chatSessions'] as const,
+  session: (sessionId: string) => ['chatSessions', sessionId, 'detail'] as const,
 };
 
 // Shared fetchers so the hooks and the prefetch/imperative helpers below hit the
@@ -206,3 +214,81 @@ export function useBlocks(documentId: string | undefined, blockIds: number[]) {
 // only re-runs when the underlying query results actually change.
 const combineBlockData = (results: { data?: BlockOut }[]) =>
   results.map((result) => result.data);
+
+const fetchChatSessions = (documentId: string) =>
+  getJson<ChatSessionSummary[]>(`/documents/${documentId}/chat/sessions`);
+
+const fetchChatSession = (sessionId: string) =>
+  getJson<ChatSessionDetail>(`/chat/sessions/${sessionId}`);
+
+/** A document's chat sessions, oldest first (the "Chat Sessions" tab list). */
+export function useChatSessions(documentId: string | undefined) {
+  return useQuery({
+    queryKey: chatKeys.sessions(documentId ?? ''),
+    queryFn: () => fetchChatSessions(documentId as string),
+    enabled: Boolean(documentId),
+  });
+}
+
+/** Full detail of one chat session incl. every message + its references. */
+export function useChatSession(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: chatKeys.session(sessionId ?? ''),
+    queryFn: () => fetchChatSession(sessionId as string),
+    enabled: Boolean(sessionId),
+  });
+}
+
+/** Starts a new, empty chat session for a document ("neue Unterhaltung"). */
+export function useCreateChatSession(documentId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      postJson<ChatSessionSummary>(`/documents/${documentId}/chat/sessions`, {}),
+    onSuccess: () => {
+      if (documentId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.sessions(documentId) });
+      }
+    },
+  });
+}
+
+/**
+ * Asks a question in a session (POST .../messages) and returns the grounded
+ * assistant reply. Synchronous -- the request blocks until the local model
+ * has answered, which can be slow; callers should show a clear pending state.
+ * The backend appends the user turn itself, so the session detail is
+ * invalidated (not patched) to pick up both new messages in one refetch; the
+ * sessions list is invalidated too since the first message sets the title.
+ */
+export function useSendChatMessage(
+  sessionId: string | undefined,
+  documentId: string | undefined,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (question: string) =>
+      postJson<ChatMessage>(`/chat/sessions/${sessionId}/messages`, { question }),
+    onSuccess: () => {
+      if (sessionId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.session(sessionId) });
+      }
+      if (documentId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.sessions(documentId) });
+      }
+    },
+  });
+}
+
+/** Deletes a chat session. */
+export function useDeleteChatSession(documentId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => del(`/chat/sessions/${sessionId}`),
+    onSuccess: () => {
+      if (documentId) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.sessions(documentId) });
+      }
+    },
+  });
+}

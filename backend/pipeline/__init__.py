@@ -7,6 +7,7 @@ the per-stage subpackages stay an implementation detail. The data contract
 lives in ``pipeline.datatypes``.
 """
 
+from .chat import ChatOptions, ChatStrategy, SegmentRetrievalChatStrategy
 from .document import Document
 from .enrichment import (
     KeywordRelevanceEnrichmentStrategy,
@@ -49,4 +50,8 @@ __all__ = [
     # Composition (runs all three stages into one Document)
     "PipelineRunner",
     "Document",
+    # Chat: query-time grounded Q&A over a processed Document (not a stage)
+    "ChatStrategy",
+    "ChatOptions",
+    "SegmentRetrievalChatStrategy",
 ]

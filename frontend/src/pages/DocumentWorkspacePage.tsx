@@ -21,21 +21,26 @@ import {
   toWorkspaceDocument,
 } from '@/utils/workspaceMappers';
 import type { Segment } from '@/types/segment';
-import type { BoundingBox, SummaryReference } from '@/api/types';
+import type { ChatSessionSummary, SummaryReference } from '@/api/types';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useReferenceHighlight } from '@/hooks/useReferenceHighlight';
 import {
   prefetchSegmentDetail,
-  useBlocks,
   useCaseDetail,
+  useChatSession,
+  useChatSessions,
+  useCreateChatSession,
+  useDeleteChatSession,
   useDocumentSegments,
   useSegmentDetail,
+  useSendChatMessage,
   useUpdateSegmentRelevance,
 } from '@/api/hooks';
 
 const NO_SEGMENTS: Segment[] = [];
 const NO_REFERENCES: SummaryReference[] = [];
-const NO_BLOCK_IDS: number[] = [];
+const NO_CHAT_SESSIONS: ChatSessionSummary[] = [];
 
 const LEFT_SIDEBAR = { initial: 284, min: 220, max: 560, storageKey: 'mindocu:left-sidebar-width' };
 const RIGHT_SIDEBAR = {
@@ -78,10 +83,10 @@ export function DocumentWorkspacePage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [showRelevantSegments, setShowRelevantSegments] = useState(true);
   const [showIrrelevantSegments, setShowIrrelevantSegments] = useState(false);
-  // Which reference (index into the segment's references) the user clicked, and
-  // which of its hits is active. `null` => the reference bar is closed.
-  const [activeReferenceIndex, setActiveReferenceIndex] = useState<number | null>(null);
-  const [activeHitIndex, setActiveHitIndex] = useState(0);
+  // The open chat session for the active document, and which of its messages'
+  // references currently drive the PDF highlight (see useReferenceHighlight).
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
+  const [activeChatMessageId, setActiveChatMessageId] = useState<number | null>(null);
   const pdfViewportRef = useRef<PdfViewportHandle>(null);
 
   const leftResize = useResizableWidth(LEFT_SIDEBAR.initial, { ...LEFT_SIDEBAR, edge: 'left' });
@@ -121,40 +126,91 @@ export function DocumentWorkspacePage() {
   const { data: segmentDetail } = useSegmentDetail(activeSegment?.id);
   const references = segmentDetail?.references ?? NO_REFERENCES;
 
-  // The clicked reference's block_ids (drives the hit bar); `null` => bar closed.
-  const activeReferenceBlockIds =
-    activeReferenceIndex != null ? (references[activeReferenceIndex]?.block_ids ?? null) : null;
+  // Chat: sessions for the active document, the open session's messages, and
+  // the mutations behind the composer/session list.
+  const { data: chatSessions } = useChatSessions(activeDocument?.id);
+  const { data: activeChatSession } = useChatSession(activeChatSessionId ?? undefined);
+  const createChatSession = useCreateChatSession(activeDocument?.id);
+  const sendChatMessage = useSendChatMessage(
+    activeChatSessionId ?? undefined,
+    activeDocument?.id,
+  );
+  const deleteChatSession = useDeleteChatSession(activeDocument?.id);
 
-  // Reference "hits": the source blocks of the clicked reference, loaded reactively
-  // (one slot per block_id, `undefined` while loading). The active hit drives the
-  // page jump + the strong highlight; `activeReferenceBlockIds === null` => closed.
-  const referenceHits = useBlocks(activeDocument?.id, activeReferenceBlockIds ?? NO_BLOCK_IDS);
-  const activeHit = referenceHits[activeHitIndex];
-  const activeHitPage = activeHit?.page_number;
-  const highlight = activeHit?.bbox
-    ? { pageNumber: activeHit.page_number, bbox: activeHit.bbox }
-    : null;
+  // Whichever chat message is currently focused (if any) drives its references
+  // into the shared highlight hook below, same as the selected segment does.
+  const activeChatMessageReferences =
+    activeChatSession?.messages.find((message) => message.message_id === activeChatMessageId)
+      ?.references ?? NO_REFERENCES;
+  const activeReferences = rightTab === 'Chat' ? activeChatMessageReferences : references;
 
-  // Faint dashed pre-marks for the other blocks of the *clicked* reference (all
-  // of its block_ids except the active hit, which gets the strong highlight on
-  // top), so every spot that reference points to is visible while stepping.
-  const markers = useMemo(() => {
-    const list: { pageNumber: number; bbox: BoundingBox; blockId: number }[] = [];
-    referenceHits.forEach((block) => {
-      if (block && block.bbox && block.block_id !== activeHit?.block_id) {
-        list.push({ pageNumber: block.page_number, bbox: block.bbox, blockId: block.block_id });
-      }
-    });
-    return list;
-  }, [referenceHits, activeHit?.block_id]);
+  // Reference-click -> highlight/hit-bar state, shared by the summary and chat
+  // tabs (see useReferenceHighlight): one instance drives the PDF's single
+  // highlight overlay, fed by whichever reference list is currently on screen.
+  const {
+    activeReferenceIndex,
+    activeHitIndex,
+    referenceHits,
+    highlight,
+    markers,
+    handleReferenceClick,
+    handlePrevHit,
+    handleNextHit,
+    handleCloseReferenceBar,
+  } = useReferenceHighlight(activeDocument?.id, activeReferences, (page) =>
+    pdfViewportRef.current?.goToPage(page),
+  );
 
-  // Scroll the PDF to the active hit's page -- both when the user steps through
-  // hits and when the active block finishes loading (page becomes known).
-  useEffect(() => {
-    if (activeHitPage) {
-      pdfViewportRef.current?.goToPage(activeHitPage);
+  const handleTabChange = (tab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions') => {
+    setRightTab(tab);
+    // The new tab's reference list is unrelated to whatever bar was open.
+    handleCloseReferenceBar();
+  };
+
+  const handleSelectChatSession = (sessionId: string) => {
+    setActiveChatSessionId(sessionId);
+    setActiveChatMessageId(null);
+    handleCloseReferenceBar();
+    setRightTab('Chat');
+  };
+
+  const handleCreateChatSession = () => {
+    if (!activeDocument) {
+      return;
     }
-  }, [activeHitPage, activeHitIndex]);
+    createChatSession.mutate(undefined, {
+      onSuccess: (created) => {
+        setActiveChatSessionId(created.session_id);
+        setActiveChatMessageId(null);
+        handleCloseReferenceBar();
+        setRightTab('Chat');
+      },
+    });
+  };
+
+  const handleDeleteChatSession = (sessionId: string) => {
+    deleteChatSession.mutate(sessionId, {
+      onSuccess: () => {
+        if (activeChatSessionId === sessionId) {
+          setActiveChatSessionId(null);
+          setActiveChatMessageId(null);
+          handleCloseReferenceBar();
+        }
+      },
+    });
+  };
+
+  const handleSendChatMessage = (question: string) => {
+    if (!activeChatSessionId) {
+      return;
+    }
+    sendChatMessage.mutate(question);
+  };
+
+  const handleChatReferenceClick = (messageId: number, index: number) => {
+    setActiveChatMessageId(messageId);
+    handleReferenceClick(index);
+  };
 
   // Manual relevance override for the currently selected segment (kebab menu in
   // the left toolbar). Two-way toggle; the mutation refreshes the segment list
@@ -214,7 +270,10 @@ export function DocumentWorkspacePage() {
     setCurrentPage(1);
     setSelectedSegmentIndex(0);
     setSearchQuery('');
-    setActiveReferenceIndex(null);
+    // Chat sessions are scoped to a document -- the old session doesn't apply here.
+    setActiveChatSessionId(null);
+    setActiveChatMessageId(null);
+    handleCloseReferenceBar();
   };
 
   const handleSelectSegment = (index: number) => {
@@ -232,7 +291,7 @@ export function DocumentWorkspacePage() {
     setSelectedSegmentIndex(index);
     // Switching segment changes the right-sidebar references, so close any open
     // hit bar from the previous segment's reference.
-    setActiveReferenceIndex(null);
+    handleCloseReferenceBar();
 
     const segment = activeSegments[index];
     if (!segment) {
@@ -277,19 +336,6 @@ export function DocumentWorkspacePage() {
     searchQuery,
     queryClient,
   ]);
-
-  // Clicking a reference sentence opens the hit bar over the PDF: it loads the
-  // reference's source blocks and jumps to / highlights the first one. The
-  // clicked reference stays underlined (via activeReferenceIndex) until closed.
-  const handleReferenceClick = (index: number) => {
-    setActiveReferenceIndex(index);
-    setActiveHitIndex(0);
-  };
-
-  const handlePrevHit = () => setActiveHitIndex((index) => Math.max(0, index - 1));
-  const handleNextHit = () =>
-    setActiveHitIndex((index) => Math.min(referenceHits.length - 1, index + 1));
-  const handleCloseReferenceBar = () => setActiveReferenceIndex(null);
 
   const clampZoom = (value: number) => Math.min(2, Math.max(0.5, value));
 
@@ -457,11 +503,22 @@ export function DocumentWorkspacePage() {
           >
             <InnerSidebarRight
               activeTab={rightTab}
-              onTabChange={setRightTab}
+              onTabChange={handleTabChange}
               segmentTitle={activeSegment ? (activeSegment.title ?? SEGMENT_TITLE_FALLBACK) : ''}
               references={references}
               onReferenceClick={handleReferenceClick}
               activeReferenceIndex={activeReferenceIndex}
+              activeChatSession={activeChatSession}
+              activeChatMessageId={activeChatMessageId}
+              onSendChatMessage={handleSendChatMessage}
+              isSendingChatMessage={sendChatMessage.isPending}
+              onChatReferenceClick={handleChatReferenceClick}
+              chatSessions={chatSessions ?? NO_CHAT_SESSIONS}
+              activeChatSessionId={activeChatSessionId}
+              onSelectChatSession={handleSelectChatSession}
+              onCreateChatSession={handleCreateChatSession}
+              onDeleteChatSession={handleDeleteChatSession}
+              isCreatingChatSession={createChatSession.isPending}
             />
           </div>
         </div>

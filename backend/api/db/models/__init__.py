@@ -8,6 +8,12 @@ Existing call sites keep working via ``from api.db.models import ...``.
 
 from api.db.models.block import Block
 from api.db.models.case import Case
+from api.db.models.chat import (
+    ChatMessage,
+    ChatMessageReference,
+    ChatReferenceBlock,
+    ChatSession,
+)
 from api.db.models.document import DocumentRow, ProcessingStatus
 from api.db.models.page import Page
 from api.db.models.reference import ReferenceBlock, SummaryReference
@@ -22,4 +28,8 @@ __all__ = [
     "Segment",
     "SummaryReference",
     "ReferenceBlock",
+    "ChatSession",
+    "ChatMessage",
+    "ChatMessageReference",
+    "ChatReferenceBlock",
 ]

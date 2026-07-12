@@ -793,6 +793,162 @@ body.mindocu-resizing * {
   font-size: 0.85rem;
 }
 
+/* Chat tab: message list + composer. Reuses .mindocu-segment-card for the
+   Chat Sessions list rows and .mindocu-summary-references/.mindocu-reference
+   (via ReferenceText) for a grounded assistant answer -- same look as the
+   segment summary, same click-to-highlight mechanism. */
+.mindocu-chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 10px;
+}
+
+.mindocu-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+}
+
+.mindocu-chat-message {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 0.87rem;
+  line-height: 1.48;
+}
+
+.mindocu-chat-message--user {
+  align-self: flex-end;
+  background: var(--mindocu-blue-light);
+  color: var(--mindocu-text-strong);
+}
+
+.mindocu-chat-message--assistant {
+  align-self: stretch;
+  background: var(--mindocu-surface);
+}
+
+.mindocu-chat-message--assistant .mindocu-summary-references {
+  gap: 4px;
+}
+
+.mindocu-chat-pending {
+  align-self: stretch;
+  color: var(--mindocu-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.mindocu-chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--mindocu-line);
+  padding-top: 10px;
+}
+
+.mindocu-chat-textarea {
+  flex: 1;
+  min-height: 38px;
+  max-height: 120px;
+  resize: none;
+  border-radius: 12px;
+  border: 1px solid rgba(186, 192, 203, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--mindocu-text-strong);
+}
+
+.mindocu-chat-textarea:focus-visible {
+  outline: none;
+  border-color: var(--mindocu-blue-dark);
+  box-shadow: 0 0 0 3px rgba(51, 72, 201, 0.11);
+}
+
+.mindocu-chat-send {
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--mindocu-blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.mindocu-chat-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mindocu-chat-send:hover:not(:disabled) {
+  background: var(--mindocu-blue-dark);
+}
+
+.mindocu-chat-new-session {
+  width: 100%;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px dashed var(--mindocu-line);
+  background: transparent;
+  color: var(--mindocu-blue);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.mindocu-chat-new-session:hover {
+  background: rgba(51, 72, 201, 0.08);
+}
+
+.mindocu-chat-sessions-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mindocu-chat-session-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mindocu-chat-session-row .mindocu-segment-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.mindocu-chat-session-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mindocu-muted);
+  cursor: pointer;
+}
+
+.mindocu-chat-session-delete:hover {
+  background: var(--mindocu-surface);
+  color: var(--mindocu-text-strong);
+}
+
 .mindocu-center-column {
   min-width: 0;
   display: flex;
@@ -1436,6 +1592,20 @@ body.mindocu-resizing * {
 .dark .mindocu-searchbar-count {
   background: rgba(124, 140, 255, 0.16);
   color: var(--mindocu-blue);
+}
+
+.dark .mindocu-chat-textarea {
+  border: 1px solid var(--mindocu-line);
+  background: var(--mindocu-surface-2);
+}
+
+.dark .mindocu-chat-message--user {
+  background: var(--mindocu-blue-light);
+}
+
+.dark .mindocu-chat-new-session:hover,
+.dark .mindocu-chat-session-delete:hover {
+  background: rgba(124, 140, 255, 0.16);
 }
 
 .dark .mindocu-inner-searchhint,

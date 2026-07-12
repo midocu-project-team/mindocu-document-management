@@ -1,7 +1,6 @@
 import time
-import enum
 
-from pydantic import BaseModel, ValidationError, create_model
+from pydantic import BaseModel, ValidationError
 
 from pipeline.datatypes import (
     DocumentSegment,
@@ -17,6 +16,7 @@ from logging_config import get_logger
 from pipeline.enrichment.keyword_relevance.prompt import TITLE_SUMMARY_SYSTEM_PROMPT
 from pipeline.enrichment.strategy import EnrichmentStrategy
 from pipeline.enrichment.utils import RelevanceKeywords, decide_relevance
+from pipeline.grounding import build_grounded_references_schema
 
 
 logger = get_logger(__name__)
@@ -48,23 +48,13 @@ class KeywordRelevanceOptions(BaseModel):
 def build_title_reference_schema(valid_block_ids: list[int]) -> type[BaseModel]:
     """LLM-output schema with block_ids constrained to this segment's blocks.
 
-    Every reference's block_ids are typed as an IntEnum of the segment's actual
-    block ids, so constrained decoding can only ground a reference in a block
-    that is really in the input -- the model cannot invent references. `title`
-    comes first so the model fixes the document type before summarizing.
+    `title` comes first (see `build_grounded_references_schema`'s `extra_fields`)
+    so the model fixes the document type before summarizing.
     """
-    ValidBlockId = enum.IntEnum(
-        "ValidBlockId", {f"id_{b_id}": b_id for b_id in valid_block_ids}
-    )
-    Reference = create_model(
-        "Reference",
-        text=(str, ...),
-        block_ids=(list[ValidBlockId], ...),
-    )
-    return create_model(
-        "ValidTitleReference",
-        title=(str, ...),
-        references=(list[Reference], ...),
+    return build_grounded_references_schema(
+        valid_block_ids,
+        extra_fields={"title": (str, ...)},
+        model_name="ValidTitleReference",
     )
 
 

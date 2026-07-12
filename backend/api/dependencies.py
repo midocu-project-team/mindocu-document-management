@@ -9,10 +9,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from pipeline import ChatStrategy
+
 from api.db.base import get_session
 from api.services import (
     BlockService,
     CaseService,
+    ChatService,
     DocumentService,
     JobQueue,
     SegmentService,
@@ -38,6 +41,14 @@ def get_job_queue(request: Request) -> JobQueue:
 JobQueueDep = Annotated[JobQueue, Depends(get_job_queue)]
 
 
+def get_chat_strategy(request: Request) -> ChatStrategy:
+    """The process-wide chat strategy stored on app state."""
+    return request.app.state.chat_strategy
+
+
+ChatStrategyDep = Annotated[ChatStrategy, Depends(get_chat_strategy)]
+
+
 def get_case_service(session: SessionDep, settings: SettingsDep) -> CaseService:
     return CaseService(session, settings)
 
@@ -56,7 +67,12 @@ def get_block_service(session: SessionDep) -> BlockService:
     return BlockService(session)
 
 
+def get_chat_service(session: SessionDep, chat_strategy: ChatStrategyDep) -> ChatService:
+    return ChatService(session, chat_strategy)
+
+
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
 DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
 SegmentServiceDep = Annotated[SegmentService, Depends(get_segment_service)]
 BlockServiceDep = Annotated[BlockService, Depends(get_block_service)]
+ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]

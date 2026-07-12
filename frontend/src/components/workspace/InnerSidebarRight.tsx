@@ -1,5 +1,8 @@
-import type { SummaryReference } from '@/api/types';
+import type { ChatSessionDetail, ChatSessionSummary, SummaryReference } from '@/api/types';
 import { SEGMENT_SUMMARY_FALLBACK } from '@/utils/workspaceMappers';
+import { ReferenceText } from '@/components/workspace/ReferenceText';
+import { ChatPanel } from '@/components/workspace/ChatPanel';
+import { ChatSessionsList } from '@/components/workspace/ChatSessionsList';
 
 type InnerSidebarRightProps = {
   activeTab: 'Zusammenfassung' | 'Chat' | 'Chat Sessions';
@@ -8,7 +11,23 @@ type InnerSidebarRightProps = {
   references: SummaryReference[];
   onReferenceClick: (index: number) => void;
   // The reference whose hit bar is currently open; stays underlined until closed.
+  // Shared across the summary and chat tabs -- only the currently visible one uses it.
   activeReferenceIndex: number | null;
+
+  // Chat tab
+  activeChatSession: ChatSessionDetail | undefined;
+  activeChatMessageId: number | null;
+  onSendChatMessage: (question: string) => void;
+  isSendingChatMessage: boolean;
+  onChatReferenceClick: (messageId: number, index: number) => void;
+
+  // Chat Sessions tab
+  chatSessions: ChatSessionSummary[];
+  activeChatSessionId: string | null;
+  onSelectChatSession: (sessionId: string) => void;
+  onCreateChatSession: () => void;
+  onDeleteChatSession: (sessionId: string) => void;
+  isCreatingChatSession: boolean;
 };
 
 const rightTabs: Array<{ label: InnerSidebarRightProps['activeTab'] }> = [
@@ -24,6 +43,17 @@ export function InnerSidebarRight({
   references,
   onReferenceClick,
   activeReferenceIndex,
+  activeChatSession,
+  activeChatMessageId,
+  onSendChatMessage,
+  isSendingChatMessage,
+  onChatReferenceClick,
+  chatSessions,
+  activeChatSessionId,
+  onSelectChatSession,
+  onCreateChatSession,
+  onDeleteChatSession,
+  isCreatingChatSession,
 }: InnerSidebarRightProps) {
   return (
     <aside className="mindocu-inner-sidebar mindocu-inner-sidebar--right">
@@ -44,32 +74,18 @@ export function InnerSidebarRight({
         ))}
       </div>
 
-      <div className="mindocu-inner-panel mindocu-inner-panel--summary">
+      <div
+        className={`mindocu-inner-panel${activeTab === 'Zusammenfassung' ? ' mindocu-inner-panel--summary' : ' mindocu-inner-panel--chat'}`}
+      >
         {activeTab === 'Zusammenfassung' ? (
           <>
             <div className="mindocu-summary-title">{segmentTitle}</div>
-            {references.length > 0 ? (
-              <div className="mindocu-summary-references">
-                {references.map((reference, index) => (
-                  <span
-                    key={index}
-                    className={`mindocu-reference${index === activeReferenceIndex ? ' is-active' : ''}`}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={index === activeReferenceIndex}
-                    onClick={() => onReferenceClick(index)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        onReferenceClick(index);
-                      }
-                    }}
-                  >
-                    {reference.text}
-                  </span>
-                ))}
-              </div>
-            ) : SEGMENT_SUMMARY_FALLBACK}
+            <ReferenceText
+              references={references}
+              activeReferenceIndex={activeReferenceIndex}
+              onReferenceClick={onReferenceClick}
+              fallback={SEGMENT_SUMMARY_FALLBACK}
+            />
             <p className="mindocu-summary-note">
               KI generierte Zusammenfassung — nur zur Orientierung
             </p>
@@ -77,17 +93,27 @@ export function InnerSidebarRight({
         ) : null}
 
         {activeTab === 'Chat' ? (
-          <div className="mindocu-empty-state">
-            <div className="mindocu-empty-state-title">Chat</div>
-            <p>Hier kann später der dialogbasierte Aktenassistent eingeblendet werden.</p>
-          </div>
+          <ChatPanel
+            session={activeChatSession}
+            onSend={onSendChatMessage}
+            isSending={isSendingChatMessage}
+            activeChatMessageId={activeChatMessageId}
+            activeReferenceIndex={activeReferenceIndex}
+            onReferenceClick={onChatReferenceClick}
+            onStartNewSession={onCreateChatSession}
+            isStartingSession={isCreatingChatSession}
+          />
         ) : null}
 
         {activeTab === 'Chat Sessions' ? (
-          <div className="mindocu-empty-state">
-            <div className="mindocu-empty-state-title">Chat Sessions</div>
-            <p>Gespeicherte Gespräche und Abfragen erscheinen hier.</p>
-          </div>
+          <ChatSessionsList
+            sessions={chatSessions}
+            activeSessionId={activeChatSessionId}
+            onSelectSession={onSelectChatSession}
+            onCreateSession={onCreateChatSession}
+            onDeleteSession={onDeleteChatSession}
+            isCreating={isCreatingChatSession}
+          />
         ) : null}
       </div>
     </aside>

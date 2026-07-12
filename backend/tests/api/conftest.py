@@ -9,7 +9,7 @@ faked and the job queue runs inline (synchronously on submit), so uploads reach
 import os
 
 import pytest
-from fakes import FakeEnricher, FakeReader, FakeSegmenter
+from fakes import FakeChatStrategy, FakeEnricher, FakeReader, FakeSegmenter
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -81,7 +81,11 @@ def settings(database_url, tmp_path) -> Settings:
 @pytest.fixture
 def client(settings, session_factory):
     runner = PipelineRunner(FakeReader(), FakeSegmenter(), FakeEnricher())
-    app = create_app(settings=settings, job_queue=InlineJobQueue(runner, session_factory))
+    app = create_app(
+        settings=settings,
+        job_queue=InlineJobQueue(runner, session_factory),
+        chat_strategy=FakeChatStrategy(),
+    )
 
     def _override_session():
         session = session_factory()

@@ -78,6 +78,34 @@ export interface BlockOut {
   source_ref: string | null;
 }
 
+export type ChatRole = 'user' | 'assistant';
+
+/** One turn of a chat session; `references` is empty for user messages. */
+export interface ChatMessage {
+  message_id: number;
+  role: ChatRole;
+  text: string;
+  references: SummaryReference[];
+  created_at: string;
+}
+
+/** One chat session without its messages (drives the "Chat Sessions" tab list). */
+export interface ChatSessionSummary {
+  session_id: string;
+  document_id: string;
+  title: string | null;
+  created_at: string;
+}
+
+/** Full session detail incl. every message (GET /chat/sessions/{id}). */
+export interface ChatSessionDetail extends ChatSessionSummary {
+  messages: ChatMessage[];
+}
+
+export interface ChatMessageCreate {
+  question: string;
+}
+
 export interface CaseDetail {
   id: string;
   name: string;

@@ -79,3 +79,9 @@ class DocumentRow(Base):
         passive_deletes=True,
         order_by="Segment.start_page",
     )
+    chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="ChatSession.created_at",
+    )
