@@ -12,10 +12,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from pipeline import ChatStrategy
+
 from api.db.base import SessionLocal
 from api.exceptions import APIError
-from api.factory import build_runner
-from api.routers import cases, documents, segments
+from api.factory import build_chat_strategy, build_runner
+from api.routers import cases, chat, documents, segments
 from api.services import JobQueue, PipelineJobQueue
 from api.settings import Settings, get_settings
 
@@ -31,8 +33,12 @@ async def lifespan(app: FastAPI):
         queue.stop()
 
 
-def create_app(settings: Settings | None = None, job_queue: JobQueue | None = None) -> FastAPI:
-    """Builds the app. Tests pass a test ``job_queue`` (and override the session)."""
+def create_app(
+    settings: Settings | None = None,
+    job_queue: JobQueue | None = None,
+    chat_strategy: ChatStrategy | None = None,
+) -> FastAPI:
+    """Builds the app. Tests pass a test ``job_queue``/``chat_strategy`` (and override the session)."""
     settings = settings or get_settings()
     app = FastAPI(title="mindocu API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
@@ -58,11 +64,15 @@ def create_app(settings: Settings | None = None, job_queue: JobQueue | None = No
 
     app.state.settings = settings
     app.state.job_queue = job_queue or PipelineJobQueue(build_runner(settings), SessionLocal)
+    # Built once and shared process-wide (same rationale as job_queue): avoids
+    # rebuilding/reloading the local model on every chat request.
+    app.state.chat_strategy = chat_strategy or build_chat_strategy(settings.chat)
 
     app.add_exception_handler(APIError, _api_error_handler) # type: ignore[arg-type] 
     app.include_router(cases.router)
     app.include_router(documents.router)
     app.include_router(segments.router)
+    app.include_router(chat.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

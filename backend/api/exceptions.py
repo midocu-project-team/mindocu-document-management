@@ -43,6 +43,13 @@ class BlockNotFoundError(APIError):
         super().__init__(f"block {block_id} of document {document_id} not found")
 
 
+class ChatSessionNotFoundError(APIError):
+    status_code = 404
+
+    def __init__(self, session_id: object) -> None:
+        super().__init__(f"chat session {session_id} not found")
+
+
 class TooManyDocumentsError(APIError):
     status_code = 409
 

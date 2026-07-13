@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 import enum
 import uuid
 from datetime import datetime
+from typing import Literal
 
 # Stage-1 contract: (x0, y0, x1, y1) in PDF points with a BOTTOM-LEFT origin
 # (y grows upward). Every ReaderStrategy backend must emit this convention;
@@ -198,6 +199,23 @@ class EnrichmentResult(BaseModel):
     enrichment_method: str  # e.g., "llm+keyword"
     relevance_keywords: list[str]  # Keyword set used for the relevance decision
     errors: list[EnrichmentError]  # Stage-3 errors (segment-scoped or global)
+
+
+####################################
+
+
+###################################
+# Chat: query-time grounded Q&A over an already-processed Document.
+# Not a pipeline stage (see pipeline/chat/) -- reuses SummaryReference for the
+# answer's grounding, so a chat answer and a segment summary have the same shape.
+###################################
+
+
+class ChatTurn(BaseModel):
+    """One turn of chat history, fed back into later prompts for follow-ups."""
+
+    role: Literal["user", "assistant"]
+    text: str
 
 
 ####################################

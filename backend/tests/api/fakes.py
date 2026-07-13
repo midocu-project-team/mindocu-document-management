@@ -10,6 +10,7 @@ import io
 import itertools
 
 from pipeline import (
+    ChatStrategy,
     EnrichmentStrategy,
     ReaderStrategy,
     SegmentationStrategy,
@@ -18,6 +19,7 @@ from pipeline import (
 from pipeline.datatypes import (
     BlockType,
     CaseFileDocument,
+    ChatTurn,
     ContentBlock,
     DocumentSegment,
     EnrichedSegment,
@@ -26,6 +28,7 @@ from pipeline.datatypes import (
     SegmentationResult,
     SummaryReference,
 )
+from pipeline.document import Document
 
 _block_ids = itertools.count()
 
@@ -67,6 +70,21 @@ class FakeEnricher(EnrichmentStrategy):
             relevance_keywords=["Verfügung"],
             errors=[],
         )
+
+
+class FakeChatStrategy(ChatStrategy):
+    """Deterministic chat strategy: echoes the question, grounded in the first block."""
+
+    def answer(
+        self, document: Document, question: str, history: list[ChatTurn]
+    ) -> list[SummaryReference]:
+        block_ids = [block.block_id for segment in document.segments for block in segment.blocks]
+        return [
+            SummaryReference(
+                text=f"Fake answer to: {question}",
+                block_ids=block_ids[:1],
+            )
+        ]
 
 
 # Pure helpers

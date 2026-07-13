@@ -2,6 +2,7 @@
 
 from api.services.block_service import BlockService
 from api.services.case_service import CaseService
+from api.services.chat_service import ChatService
 from api.services.document_service import DocumentService
 from api.services.pipeline_jobs import (
     JobQueue,
@@ -14,6 +15,7 @@ from api.services.segment_service import SegmentService
 __all__ = [
     "BlockService",
     "CaseService",
+    "ChatService",
     "DocumentService",
     "SegmentService",
     "JobQueue",

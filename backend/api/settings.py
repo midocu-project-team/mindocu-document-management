@@ -90,6 +90,17 @@ class EnrichmentSettings(BaseModel):
     provider: ProviderSettings = Field(default_factory=ProviderSettings)
 
 
+class ChatSettings(BaseModel):
+    """Document-chat options (query-time, not a pipeline stage)."""
+
+    temperature: float = 0.0
+    max_segments: int = 5
+    max_input_chars_per_segment: int | None = 12_000
+    max_history_turns: int = 6
+    # The chat's own LLM backend (defaults to a standalone ProviderSettings).
+    provider: ProviderSettings = Field(default_factory=ProviderSettings)
+
+
 class Settings(BaseSettings):
     """Top-level application configuration."""
 
@@ -108,6 +119,7 @@ class Settings(BaseSettings):
 
     segmentation: SegmentationSettings = Field(default_factory=SegmentationSettings)
     enrichment: EnrichmentSettings = Field(default_factory=EnrichmentSettings)
+    chat: ChatSettings = Field(default_factory=ChatSettings)
     keywords: RelevanceKeywords = Field(
         default_factory=lambda: DEFAULT_KEYWORDS.model_copy(deep=True)
     )

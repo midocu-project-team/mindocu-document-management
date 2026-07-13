@@ -13,6 +13,8 @@ from typing import Any, assert_never
 
 from llm import LLMProvider, MLXProvider, OllamaProvider
 from pipeline import (
+    ChatOptions,
+    ChatStrategy,
     DoclingReaderStrategy,
     EnrichmentStrategy,
     FullContextOptions,
@@ -24,9 +26,11 @@ from pipeline import (
     ReaderStrategy,
     RelevanceKeywords,
     SegmentationStrategy,
+    SegmentRetrievalChatStrategy,
 )
 
 from api.settings import (
+    ChatSettings,
     EnrichmentSettings,
     ProviderSettings,
     SegmentationSettings,
@@ -87,6 +91,17 @@ def build_enricher(
     return KeywordRelevanceEnrichmentStrategy(
         build_provider(enr.provider), keywords, options
     )
+
+
+def build_chat_strategy(chat: ChatSettings) -> ChatStrategy:
+    """Builds the chat strategy bound to its own provider (query-time, not a stage)."""
+    options = ChatOptions(
+        temperature=chat.temperature,
+        max_segments=chat.max_segments,
+        max_input_chars_per_segment=chat.max_input_chars_per_segment,
+        max_history_turns=chat.max_history_turns,
+    )
+    return SegmentRetrievalChatStrategy(build_provider(chat.provider), options)
 
 
 def build_runner(settings: Settings) -> PipelineRunner:
